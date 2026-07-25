@@ -1,0 +1,222 @@
+{
+  "version": "AKHILESH_DSA_NEWSPAPER_REVISION_GAZETTE_V2",
+  "exportedAt": "2026-07-25T12:17:13.151Z",
+  "appData": {
+    "problems": [
+      {
+        "id": "p_r2czee8_ms06pm7y",
+        "name": "Minimum Penalty",
+        "url": "https://maang.in/problems/Minimum-Penalty-64?resourceUrl=pl3469-rs64&returnUrl=%5B%22%2Fcohorts%2FAZ-Premium-Cohort-14-70%3Ftab%3Dassignments%22%5D",
+        "topic": "Two Pointer",
+        "phase": "Phase 2",
+        "difficulty": "Medium",
+        "status": "Got AC",
+        "solveDate": "2026-07-25",
+        "nextRevDate": "2026-07-26",
+        "interval": 1,
+        "history": [],
+        "revisionMistakes": [],
+        "cfftd": {
+          "c": "",
+          "f1": "",
+          "t": "",
+          "d": "",
+          "notes": "# Minimum Penalty — Revision Doc\n\n## 1. What is the question actually asking?\nYou get an array of N numbers and a window size D.\nLook at every group of D consecutive numbers (every \"subarray of length D\").\nFor each group, count how many **different (distinct)** numbers are in it — that's the \"penalty.\"\nFind the group with the **smallest** penalty and print that number.\n\n**Example:** `[0,1,1,2,2,2]`, D=3\nGroups of 3 consecutive numbers:\n- `[0,1,1]` → distinct values: 0,1 → penalty 2\n- `[1,1,2]` → distinct values: 1,2 → penalty 2\n- `[1,2,2]` → distinct values: 1,2 → penalty 2\n- `[2,2,2]` → distinct values: 2 → penalty 1 ← smallest\n\nAnswer: **1**\n\n## 2. Why brute force is too slow\nThe dumb way: for every group, look at all D elements and count distinct ones fresh.\nThat's roughly N groups × D elements to check each time = **N × D operations**.\nWith N and D both up to 10⁶, that's up to 10¹² operations. Way too slow, even before we hit the test-case count.\n\n## 3. The trick: Sliding Window\nInstead of recounting distinct values from scratch every time, notice something:\nwhen you move from one group to the next, you only change **two elements** — you drop the leftmost one and add one new one on the right.\n\nSo instead of recomputing everything, just **update** the distinct count:\n- Something leaves the window → maybe distinct count goes down (only if that number isn't in the window anymore at all).\n- Something new enters the window → maybe distinct count goes up (only if it wasn't already in the window).\n\nThis turns an O(D) recount into an O(1) update. Total work becomes O(N) instead of O(N×D). Huge speedup.\n\n## 4. How do we know if a number \"left completely\" or \"still exists\"?\nWe keep a **frequency array**: `freq[value] = how many times value currently appears in the window`.\n\n- When a number leaves the window: `freq[value]--`. If it becomes 0, that value is truly gone → distinct count goes down by 1.\n- When a number enters the window: if `freq[value]` was 0 *before* adding it, that means it's a brand new value in the window → distinct count goes up by 1. Then do `freq[value]++`.\n\n## 5. Step-by-step algorithm\n1. Build the **first window** (first D elements): for each, if its freq was 0, increment `distinct`. Then increment its freq.\n2. Set `ans = distinct` (this is our current best/minimum).\n3. **Slide** the window one step at a time from index `d` to `n-1`:\n   - The element leaving is `arr[i-d]`. Decrease its freq. If freq hits 0, decrease `distinct`.\n   - The element entering is `arr[i]`. If its freq was 0, increase `distinct`. Then increase its freq.\n   - Update `ans = min(ans, distinct)`.\n4. Print `ans`.\n\n## 6. Dry run on `[0,1,1,2,2,2]`, D=3\n| Step | Window | freq changes | distinct | ans |\n|---|---|---|---|---|\n| init | [0,1,1] | freq[0]=1, freq[1]=2 | 2 | 2 |\n| slide i=3 | [1,1,2] | out 0 (freq→0, distinct--), in 2 (new, distinct++) | 2 | 2 |\n| slide i=4 | [1,2,2] | out 1 (freq→1, still there), in 2 (freq→2, not new) | 2 | 2 |\n| slide i=5 | [2,2,2] | out 1 (freq→0, distinct--), in 2 (freq→3, not new) | 1 | **1** |\n\nMatches expected answer.\n\n## 7. Working code\n```cpp\n#include<bits/stdc++.h>\nusing namespace std;\n\nint freq[1000001]; // GLOBAL array — created only ONCE, not per test case\n\nint main(){\n    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n\n    int t;\n    cin >> t;\n    while(t--){\n        int n, d;\n        cin >> n >> d;\n        vector<int> arr(n);\n        for(int i = 0; i < n; i++) cin >> arr[i];\n\n        // Step 1: build first window\n        int distinct = 0;\n        for(int i = 0; i < d; i++){\n            if(freq[arr[i]] == 0) distinct++;\n            freq[arr[i]]++;\n        }\n        int ans = distinct;\n\n        // Step 2: slide the window\n        for(int i = d; i < n; i++){\n            int out = arr[i - d];\n            freq[out]--;\n            if(freq[out] == 0) distinct--;\n\n            int in = arr[i];\n            if(freq[in] == 0) distinct++;\n            freq[in]++;\n\n            ans = min(ans, distinct);\n        }\n\n        cout << ans << \"\\n\";\n\n        // Step 3: cleanup — reset ONLY the indices we touched\n        for(int i = 0; i < n; i++) freq[arr[i]] = 0;\n    }\n    return 0;\n}\n```\n\n## 8. Why my first version got TLE (important!)\nMy original code had this **inside** the `while(t--)` loop:\n```cpp\nvector<int> freq(1000001, 0);\n```\nThis creates a fresh array of a million zeros for **every single test case**. If there are up to 10,000 test cases, that's up to 10 billion wasted operations just resetting the array — before even solving anything. That was the whole problem, not the sliding window logic.\n\n**The fix has two parts:**\n1. Move `freq[]` **outside `main()`** so it's a global array, built exactly once.\n2. Since it's now shared across test cases, it keeps old values — so after finishing each test case, manually reset **only the positions you used** (loop through `arr`, not through all 1,000,001 slots). This costs at most ΣN ≤ 5×10⁶ operations total across all test cases — totally fine.\n\nAlso added `sync_with_stdio(false); cin.tie(NULL);` — this speeds up cin/cout, which matters a lot when total input size is large (up to 5×10⁶ numbers).\n\n## 9. Complexity\n- **Time:** O(N) per test case → O(ΣN) = O(5×10⁶) overall. Fast enough for 1 sec.\n- **Space:** O(10⁶) for the freq array, allocated once.\n\n## 10. General lesson (applies beyond this problem)\nWhenever a problem has:\n- a **large number of test cases (T)**, and\n- an array/structure whose size depends on the **value range** (not just N),\n\n→ **never allocate or fully clear that structure inside the test-case loop.** Make it global, and clean up only the specific entries you touched.\n\n## 11. Self-test before looking at the code tomorrow\nTry to solve these on paper using the sliding window steps above, without peeking:\n- `[0,1,1,2,2,2]`, D=3 → expected **1**\n- `[1,0,1,2,3]`, D=3 → expected **2**\n- `[1,2,3,4,5]`, D=1 → expected **1**\n- `[1,2,3,4,5]`, D=5 → expected **5**\n\nIf you can walk through the dry-run table (like section 6) for any of these without help, you've got it."
+        },
+        "createdAt": "2026-07-25T09:46:28.414Z",
+        "archived": false
+      },
+      {
+        "id": "p_rvavtbn_ms0c316f",
+        "name": "Longest Distinct Subarray",
+        "url": "https://maang.in/problems/Longest-Distinct-Subarray-AZ101-371?resourceUrl=pl3469-rs371&returnUrl=%5B%22%2Fcohorts%2FAZ-Premium-Cohort-14-70%3Ftab%3Dassignments%22%5D",
+        "topic": "Two Pointer",
+        "phase": "Phase 2",
+        "difficulty": "Medium",
+        "status": "Got AC",
+        "solveDate": "2026-07-25",
+        "nextRevDate": "2026-07-26",
+        "interval": 1,
+        "history": [],
+        "revisionMistakes": [],
+        "cfftd": {
+          "c": "",
+          "f1": "",
+          "t": "",
+          "d": "",
+          "notes": "# Longest Distinct Subarray — revision notes\n\n## The one-line gut check\n\"Mouth (head) eats new flavors only. Butt (tail) poops old ones when blocked.\"\n\nThat sentence = the entire algorithm. If you can say that, you can derive the code.\n\n## Mentor's two-pointer template — what each line means here\n\n```cpp\nunordered_map<long long,int> freq;   // freq[value] = 1 if value currently IN window, 0 if not\nint tail = 0, head = -1;             // window starts empty\nint ans = 0;\n\nwhile(tail < n){\n    // GROW: eat forward as long as the next value isn't already in the window\n    while(head+1 < n && freq[arr[head+1]] == 0){\n        head++;\n        freq[arr[head]]++;\n    }\n\n    // RECORD: check the answer NOW, right after max growth, BEFORE shrinking\n    ans = max(ans, head - tail + 1);\n\n    // SHRINK by 1 from the back, so next round can try growing again\n    if(tail > head){\n        // window is EMPTY — nothing to remove — just slide both pointers together\n        tail++;\n        head = tail - 1;\n    } else{\n        // window has something — remove arr[tail] from freq, then move tail forward\n        freq[arr[tail]]--;\n        tail++;\n    }\n}\n\ncout << ans << \"\\n\";\n```\n\n## My mistakes this session (read this part slow)\n\n1. **Wrote `unordered_map<long long> freq` with only ONE template type.**\n   Fix: `unordered_map` always needs `<key_type, value_type>`. Here it's `<long long, int>` — key = the array value, value = its frequency count.\n\n2. **Forgot the `ans = max(ans, head-tail+1)` line entirely** after copying the shrink block.\n   Fix: the order in the loop is always: grow fully → **update ans** → then shrink. If you update ans AFTER shrinking, you already lost a candy from the window and you'll undercount.\n\n3. **Didn't understand why `if(tail > head)` exists.**\n   It only fires when the window has become EMPTY — meaning tail has moved past head (tail=2, head=1 for example). This happens after you poop out the last element that was in the window, and the mouth couldn't eat the next one (it's a duplicate). Since there's nothing left to poop, you can't run the normal `else` branch (it would corrupt freq for the wrong value) — instead you just snap both pointers to sit together, resetting to an empty window at a fresh spot.\n\n4. **General confusion point:** don't try to memorize this as abstract \"tail/head\" logic. Anchor it to the caterpillar story every time, then translate story → code, don't try to memorize code directly.\n\n## Full trace example (paper trace, no story) — array [3, 3]\n\n| round | tail before | head before | grow? | ans update | branch | tail after |\n|---|---|---|---|---|---|---|\n| 1 | 0 | -1 | eats idx0 → head=0 | ans=1 | tail(0)>head(0)? no → else: freq[3]--, tail=1 | 1 |\n| 2 | 1 | 0 | idx1 fresh (freq reset to 0) → eats → head=1 | ans=1 | tail(1)>head(1)? no → else: freq[3]--, tail=2 | 2 |\n| 3 | 2 | 1 | loop ends, tail=n | — | — | — |\n\nAnswer = 1 ✅ (all same elements, longest distinct subarray = 1)\n\n## Full trace example where `if(tail>head)` actually fires — array [1,2,2,1,2]\n\nWatch for the round where tail jumps AHEAD of head — that's the trigger.\n\n- Window grows to cover idx0,idx1 (values 1,2) → blocked at idx2 (dup 2) → ans=2\n- Shrink: poop idx0 → tail=1, head still=1 → tail(1) > head(1)? no, equal → else branch\n- Try grow again: idx2 still a dup (freq[2] still 1) → can't grow → ans stays 2\n- Shrink: poop idx1 → tail=2, head still=1 → **tail(2) > head(1)? YES** → if branch fires: tail=3? \n\nWait — trace this one yourself on paper before tomorrow's revision. If you get stuck, redo the interactive stepper widget from this conversation.\n\n## Final answer for the original problem (3 test cases)\n\nInput: `[1,2,2,1,2]`, `[3,3,3,3]`, `[1,3,2,4,1]`\nOutput: `2 1 4` ✅"
+        },
+        "createdAt": "2026-07-25T12:16:52.407Z",
+        "archived": false
+      }
+    ],
+    "schedule": [
+      {
+        "phase": "Phase 0",
+        "week": "Week 1",
+        "theme": "Orientation",
+        "topics": "Setup + Orientation",
+        "status": "Completed"
+      },
+      {
+        "phase": "Phase 0",
+        "week": "Week 2",
+        "theme": "No more TLE",
+        "topics": "Optimization",
+        "status": "Completed"
+      },
+      {
+        "phase": "Phase 0",
+        "week": "Week 3",
+        "theme": "Modulo",
+        "topics": "Modulo Arithmetic + Logic Building",
+        "status": "Completed"
+      },
+      {
+        "phase": "Phase 0",
+        "week": "Week 4",
+        "theme": "Number Theory",
+        "topics": "Number Theory Class",
+        "status": "Completed"
+      },
+      {
+        "phase": "Phase 1",
+        "week": "Week 5",
+        "theme": "STL",
+        "topics": "C++ STL",
+        "status": "Completed"
+      },
+      {
+        "phase": "Phase 1",
+        "week": "Week 6",
+        "theme": "Mixed PS",
+        "topics": "Mixed Problem Solving",
+        "status": "Completed"
+      },
+      {
+        "phase": "Phase 1",
+        "week": "Week 7",
+        "theme": "Greedy",
+        "topics": "Greedy Algorithms",
+        "status": "In Progress"
+      },
+      {
+        "phase": "Phase 1",
+        "week": "Week 8",
+        "theme": "More Ideas",
+        "topics": "Advanced STL Ideas",
+        "status": "Not Started"
+      },
+      {
+        "phase": "Phase 2",
+        "week": "Week 9",
+        "theme": "Binary Search",
+        "topics": "Binary Search + BS on Answer",
+        "status": "In Progress"
+      },
+      {
+        "phase": "Phase 2",
+        "week": "Week 10",
+        "theme": "Two Pointer",
+        "topics": "Two Pointer Technique",
+        "status": "Not Started"
+      },
+      {
+        "phase": "Phase 2",
+        "week": "Week 11",
+        "theme": "Recursion",
+        "topics": "Recursion + Backtracking I",
+        "status": "Not Started"
+      },
+      {
+        "phase": "Phase 2",
+        "week": "Week 12",
+        "theme": "Backtracking",
+        "topics": "Recursion + Backtracking II",
+        "status": "Not Started"
+      },
+      {
+        "phase": "Phase 3",
+        "week": "Week 13",
+        "theme": "Graph Foundation",
+        "topics": "Graph BFS/DFS",
+        "status": "Not Started"
+      },
+      {
+        "phase": "Phase 3",
+        "week": "Week 14",
+        "theme": "Shortest Path",
+        "topics": "Dijkstra + Bellman Ford",
+        "status": "Not Started"
+      }
+    ],
+    "todos": [],
+    "gamification": {
+      "coins": 102,
+      "loginDays": [
+        "2026-06-21",
+        "2026-07-25"
+      ],
+      "lastLoginDate": "2026-07-25",
+      "lastDailyRewardDate": "2026-07-25",
+      "lastBriefSeenDate": "2026-06-21",
+      "lastLoginGap": 0,
+      "dailyRewardCredited": false,
+      "isNewDaySession": false,
+      "coinLedger": [
+        {
+          "id": "problem:add:p_r2czee8_ms06pm7y",
+          "type": "problem",
+          "amount": 15,
+          "label": "New problem published: Minimum Penalty",
+          "meta": {
+            "problemId": "p_r2czee8_ms06pm7y"
+          },
+          "status": "active",
+          "createdAt": "2026-07-25T09:46:28.414Z"
+        },
+        {
+          "id": "checkin:2026-07-25",
+          "type": "checkin",
+          "amount": 10,
+          "label": "Daily check-in claimed",
+          "meta": {
+            "date": "2026-07-25"
+          },
+          "status": "active",
+          "createdAt": "2026-07-25T09:52:30.910Z"
+        },
+        {
+          "id": "problem:add:p_rvavtbn_ms0c316f",
+          "type": "problem",
+          "amount": 15,
+          "label": "New problem published: Longest Distinct Subarray",
+          "meta": {
+            "problemId": "p_rvavtbn_ms0c316f"
+          },
+          "status": "active",
+          "createdAt": "2026-07-25T12:16:52.407Z"
+        }
+      ],
+      "baseCoins": 62,
+      "checkinRewardDays": [
+        "2026-07-25"
+      ],
+      "streakFreezes": 2,
+      "freezeUsedDays": [],
+      "lastFreezeRefill": "2026-07"
+    },
+    "calendarEvents": [],
+    "pomodoro": {
+      "sessions": 0,
+      "minutes": 0
+    },
+    "meta": {
+      "createdBy": "Akhilesh Daily Revision Gazette",
+      "baselineLoginDays": [
+        "2026-06-21"
+      ],
+      "focusSessions": []
+    }
+  }
+}
