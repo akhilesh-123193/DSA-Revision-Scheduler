@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://dsa-revision-scheduler.onrender.com" target="_blank"><strong>🚀 Live Demo</strong></a> •
   <a href="#key-features">Key Features</a> •
   <a href="#tech-stack">Tech Stack</a> •
   <a href="#getting-started">Getting Started</a> •
