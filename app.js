@@ -2254,6 +2254,102 @@ window.copyCodeSnippet = function (btn, text) {
       </div>`;
 
       bodyEl.innerHTML = html;
+    } else if (activeDmTab === "schedule") {
+      const currentInterval = Number(p.interval || 1);
+      const nextDate = p.nextRevDate || todayISO();
+      const isOverdue = nextDate < todayISO();
+      const revCount = (p.history || []).length;
+      
+      const roadmap = [];
+      let simDate = nextDate;
+      let simInterval = currentInterval;
+      
+      roadmap.push({
+        rung: simInterval,
+        date: simDate,
+        status: isOverdue ? '🔴 Overdue & Priority Next' : (simDate === todayISO() ? '🟡 Due Today' : '🟢 Next Scheduled Revision'),
+        isNext: true,
+        desc: `This problem is currently on the ${simInterval}-day interval step. It is scheduled for revision on ${formatLongDate(simDate)} (${daysUntilText(simDate)}).`
+      });
+      
+      while (simInterval < 90 && roadmap.length < 5) {
+        const nextInt = nextIntervalFor(simInterval, 'ac');
+        if (nextInt <= simInterval) break;
+        simDate = addDaysISO(simDate, nextInt);
+        simInterval = nextInt;
+        roadmap.push({
+          rung: simInterval,
+          date: simDate,
+          status: simInterval === 90 ? '🏆 Mastery Target (90d Rung)' : '⏳ Projected on AC',
+          isNext: false,
+          desc: `If solved cleanly (AC), the next spaced interval increases to ${simInterval} days, scheduled for ${formatLongDate(simDate)}.`
+        });
+      }
+      
+      let html = `
+        <div class="schedule-tab-wrap">
+          <div class="schedule-overview-card" style="background:rgba(255,252,242,0.9);border:1px solid var(--border);border-left:4px solid var(--gold);padding:20px;border-radius:14px;margin-bottom:24px;box-shadow:0 8px 24px rgba(28,21,16,0.06);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+              <div>
+                <div style="font-size:0.7rem;font-weight:800;color:var(--ink-60);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Current Spaced Repetition Rung</div>
+                <div style="font-size:1.5rem;font-weight:900;color:var(--ink);">${currentInterval}-Day Revision Interval</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:0.7rem;font-weight:800;color:var(--ink-60);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Next Scheduled Date</div>
+                <div style="font-size:1.3rem;font-weight:800;color:${isOverdue ? 'var(--red)' : 'var(--green)'};">${formatShortDate(nextDate)}</div>
+                <div style="font-size:0.75rem;font-weight:700;color:var(--ink-60);">${daysUntilText(nextDate)}</div>
+              </div>
+            </div>
+            <p style="margin:0;font-size:0.9rem;color:var(--ink-60);line-height:1.5;">
+              This problem follows the 5-step interval ladder (<strong style="color:var(--ink);">1d → 3d → 7d → 30d → 90d</strong>). 
+              You have revised this problem <strong style="color:var(--ink);">${revCount} time${revCount === 1 ? '' : 's'}</strong>. 
+              The Revision Desk automatically handles topic-balancing and schedules this problem without crowding out your new daily problem solving.
+            </p>
+          </div>
+          
+          <div class="dm-section-title">Spaced Repetition Schedule Roadmap</div>
+          <div class="schedule-roadmap-list" style="display:grid;gap:12px;margin-top:16px;">
+            ${roadmap.map((step, idx) => `
+              <div class="schedule-step-card ${step.isNext ? 'active-step' : 'projected-step'}" style="background:${step.isNext ? 'rgba(255,250,230,0.95)' : 'rgba(255,255,255,0.5)'};border:1px ${step.isNext ? 'solid' : 'dashed'} ${step.isNext ? 'var(--gold)' : 'var(--border)'};border-left:4px solid ${step.isNext ? 'var(--gold)' : 'var(--ink-25)'};padding:16px 20px;border-radius:12px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;">
+                <div style="width:48px;height:48px;border-radius:50%;background:${step.isNext ? 'var(--gold)' : 'rgba(28,21,16,0.08)'};color:${step.isNext ? '#1a140e' : 'var(--ink-60)'};display:grid;place-items:center;font-weight:900;font-size:1rem;box-shadow:${step.isNext ? '0 4px 12px rgba(196,154,39,0.3)' : 'none'};">
+                  ${step.rung}d
+                </div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+                    <strong style="font-size:1rem;color:var(--ink);">${step.isNext ? 'Step ' + (idx + 1) + ': Upcoming Due Revision' : 'Step ' + (idx + 1) + ': Projected Revision'}</strong>
+                    <span style="font-size:0.72rem;font-weight:800;padding:2px 8px;border-radius:12px;background:${step.isNext ? 'rgba(40,113,79,0.15)' : 'rgba(28,21,16,0.06)'};color:${step.isNext ? 'var(--green)' : 'var(--ink-60)'};">${step.status}</span>
+                  </div>
+                  <div style="font-size:0.85rem;color:var(--ink-60);line-height:1.4;">${step.desc}</div>
+                </div>
+                <div style="text-align:right;min-width:100px;">
+                  <div style="font-size:0.7rem;font-weight:800;color:var(--ink-60);text-transform:uppercase;">Scheduled For</div>
+                  <div style="font-size:1rem;font-weight:800;color:var(--ink);">${formatShortDate(step.date)}</div>
+                  <div style="font-size:0.75rem;color:var(--ink-60);">${step.isNext ? daysUntilText(step.date) : '+' + step.rung + ' days'}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          
+          ${(p.revisionMistakes && p.revisionMistakes.length > 0) ? `
+            <div style="margin-top:28px;">
+              <div class="dm-section-title">Completed Past Revisions Log</div>
+              <div style="display:grid;gap:8px;margin-top:14px;">
+                ${p.revisionMistakes.slice().reverse().map(rev => `
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(255,255,255,0.4);border:1px solid var(--border);border-radius:10px;font-size:0.85rem;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <span class="dm-dot ${rev.outcome}" style="width:18px;height:18px;font-size:0.6rem;">●</span>
+                      <strong style="color:var(--ink);">${formatLongDate(rev.date)}</strong>
+                      <span style="color:var(--ink-60);">— ${labelOutcome(rev.outcome)}</span>
+                    </div>
+                    ${rev.mistakes ? `<span style="font-style:italic;color:var(--ink-60);max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"${escapeHTML(rev.mistakes)}"</span>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      bodyEl.innerHTML = html;
     } else if (activeDmTab === "revise") {
       bodyEl.innerHTML = `
         <div style="max-width:560px;margin:0 auto;background:rgba(255,252,242,0.85);padding:24px;border-radius:16px;border:1px solid var(--border)">
