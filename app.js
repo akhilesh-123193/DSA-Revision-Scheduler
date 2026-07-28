@@ -1244,7 +1244,8 @@ window.copyCodeSnippet = function (btn, text) {
       nextRevDate = addDaysISO(solveDate, 1);
     }
     const interval = Math.max(1, daysBetween(solveDate, nextRevDate) || 1);
-    const scheduledNextRevDate = findRevisionSlot(nextRevDate, editingProblemId || '');
+    const problemTopic = $('#pTopic').value.trim() || 'Uncategorized';
+    const scheduledNextRevDate = findRevisionSlot(nextRevDate, editingProblemId || '', null, problemTopic);
 
     if (editingProblemId) {
       const p = state.problems.find(x => x.id === editingProblemId);
@@ -1320,7 +1321,7 @@ window.copyCodeSnippet = function (btn, text) {
     const prevNextRevDate = p.nextRevDate;
     const nextInterval = nextIntervalFor(prevInterval, outcome);
     const intendedNextRevDate = addDaysISO(today, nextInterval);
-    const newNextRevDate = findRevisionSlot(intendedNextRevDate, id);
+    const newNextRevDate = findRevisionSlot(intendedNextRevDate, id, null, p.topic || '');
     const ledgerId = `revision:${id}:${today}`;
 
     p.history.push(today);
@@ -1892,21 +1893,51 @@ window.copyCodeSnippet = function (btn, text) {
     return maxISODate(todayISO(), REVISION_SCHEDULE_START_DATE);
   }
 
-  function findRevisionSlot(preferredDate, excludeProblemId = '', existingLoad = null) {
+  // Build two parallel maps from already-scheduled problems:
+  //   count  — Map<date, number>       how many problems on that day
+  //   topics — Map<date, Set<string>>  which topics are on that day
+  function buildScheduleMaps(excludeId = '') {
+    const baseDate = revisionSchedulingBaseDate();
+    const count = new Map();
+    const topics = new Map();
+    activeRevisionProblems().forEach(p => {
+      if (p.id !== excludeId && p.nextRevDate >= baseDate) {
+        count.set(p.nextRevDate, (count.get(p.nextRevDate) || 0) + 1);
+        if (!topics.has(p.nextRevDate)) topics.set(p.nextRevDate, new Set());
+        topics.get(p.nextRevDate).add(p.topic || 'Uncategorized');
+      }
+    });
+    return { count, topics };
+  }
+
+  // Find the earliest slot for a problem that is:
+  //   1. Under the daily cap, AND
+  //   2. Doesn't already have a problem from the same topic (preferred).
+  // If no topic-clean slot is found within 60 days, falls back to
+  // the first slot that is simply under the cap.
+  // Pass maps = { count, topics } when calling in a loop to avoid
+  // rebuilding from scratch each time (enforceDailyRevisionLimit does this).
+  function findRevisionSlot(preferredDate, excludeProblemId = '', maps = null, topic = '') {
     const baseDate = revisionSchedulingBaseDate();
     let date = isValidISO(preferredDate) ? preferredDate : baseDate;
     if (date < baseDate) date = baseDate;
 
-    const load = existingLoad || new Map();
-    if (!existingLoad) {
-      activeRevisionProblems().forEach(p => {
-        if (p.id !== excludeProblemId && p.nextRevDate >= baseDate) {
-          addToRevisionLoad(load, p.nextRevDate);
-        }
-      });
+    const { count, topics } = maps || buildScheduleMaps(excludeProblemId);
+    const t = topic || '';
+
+    // First pass: find a slot under cap where this topic isn't present yet.
+    if (t) {
+      let d = date;
+      for (let i = 0; i < 60; i++) {
+        const cnt = count.get(d) || 0;
+        const topicsOnDay = topics.get(d) || new Set();
+        if (cnt < MAX_DAILY_REVISIONS && !topicsOnDay.has(t)) return d;
+        d = addDaysISO(d, 1);
+      }
     }
 
-    while ((load.get(date) || 0) >= MAX_DAILY_REVISIONS) {
+    // Fallback: any slot under the cap (topic-blind).
+    while ((count.get(date) || 0) >= MAX_DAILY_REVISIONS) {
       date = addDaysISO(date, 1);
     }
     return date;
@@ -1914,21 +1945,38 @@ window.copyCodeSnippet = function (btn, text) {
 
   function enforceDailyRevisionLimit() {
     const baseDate = revisionSchedulingBaseDate();
-    const load = new Map();
+    // Build fresh maps — we'll update them incrementally as we slot each problem.
+    const maps = { count: new Map(), topics: new Map() };
     let changed = false;
 
-    activeRevisionProblems()
-      .slice()
-      .sort(revisionPrioritySort)
-      .forEach(p => {
-        const preferred = p.nextRevDate < baseDate ? baseDate : p.nextRevDate;
-        const slot = findRevisionSlot(preferred, p.id, load);
-        if (slot !== p.nextRevDate) {
-          p.nextRevDate = slot;
-          changed = true;
-        }
-        addToRevisionLoad(load, slot);
-      });
+    // Interleave problems by topic before slotting so that days naturally
+    // get mixed topics (e.g. BS+TP on day 1, BS+TP on day 2) rather than
+    // all BS first then all TP.
+    const sorted = activeRevisionProblems().slice().sort(revisionPrioritySort);
+    const byTopic = new Map();
+    sorted.forEach(p => {
+      const t = p.topic || 'Uncategorized';
+      if (!byTopic.has(t)) byTopic.set(t, []);
+      byTopic.get(t).push(p);
+    });
+    const interleaved = [];
+    const qs = Array.from(byTopic.values());
+    while (qs.some(q => q.length > 0)) {
+      qs.forEach(q => { if (q.length > 0) interleaved.push(q.shift()); });
+    }
+
+    interleaved.forEach(p => {
+      const preferred = p.nextRevDate < baseDate ? baseDate : p.nextRevDate;
+      const slot = findRevisionSlot(preferred, p.id, maps, p.topic || '');
+      if (slot !== p.nextRevDate) {
+        p.nextRevDate = slot;
+        changed = true;
+      }
+      // Update both maps so the next problem sees the updated load.
+      maps.count.set(slot, (maps.count.get(slot) || 0) + 1);
+      if (!maps.topics.has(slot)) maps.topics.set(slot, new Set());
+      maps.topics.get(slot).add(p.topic || 'Uncategorized');
+    });
 
     return changed;
   }
@@ -1941,7 +1989,40 @@ window.copyCodeSnippet = function (btn, text) {
   }
 
   function dueProblems() {
-    return allDueProblems().slice(0, MAX_DAILY_REVISIONS);
+    const all = allDueProblems();
+    if (all.length <= MAX_DAILY_REVISIONS) return all;
+
+    // Group problems by topic. Within each queue, problems are already
+    // sorted most-overdue first (from allDueProblems → revisionPrioritySort).
+    const byTopic = new Map();
+    all.forEach(p => {
+      const t = p.topic || 'Uncategorized';
+      if (!byTopic.has(t)) byTopic.set(t, []);
+      byTopic.get(t).push(p);
+    });
+
+    // Sort the topic queues by how overdue their most urgent problem is.
+    // This means when topics > cap (e.g. 6 topics, cap=4), the 4 topics
+    // with the most overdue problems get picked first. The skipped topics
+    // automatically become the most overdue tomorrow, so every topic
+    // rotates through fairly over time — no topic ever gets permanently buried.
+    const queues = Array.from(byTopic.values())
+      .sort((a, b) => (a[0].nextRevDate || '').localeCompare(b[0].nextRevDate || ''));
+
+    // Round-robin: one problem per topic per pass until cap is reached.
+    const selected = [];
+    while (selected.length < MAX_DAILY_REVISIONS) {
+      let added = false;
+      for (const q of queues) {
+        if (selected.length >= MAX_DAILY_REVISIONS) break;
+        if (q.length > 0) {
+          selected.push(q.shift());
+          added = true;
+        }
+      }
+      if (!added) break; // all queues exhausted
+    }
+    return selected;
   }
 
   function metricsForDate(date) {
