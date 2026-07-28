@@ -2352,17 +2352,58 @@ window.copyCodeSnippet = function (btn, text) {
       bodyEl.innerHTML = html;
     } else if (activeDmTab === "revise") {
       bodyEl.innerHTML = `
-        <div style="max-width:560px;margin:0 auto;background:rgba(255,252,242,0.85);padding:24px;border-radius:16px;border:1px solid var(--border)">
-          <h3 style="margin-top:0;font-size:1.1rem;color:var(--ink)">Stamp Revision for ${escapeHTML(p.name)}</h3>
+        <div style="max-width:580px;margin:0 auto;background:rgba(255,252,242,0.9);padding:24px;border-radius:16px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(28,21,16,0.06);">
+          <h3 style="margin-top:0;font-size:1.15rem;color:var(--ink)">Stamp Revision for ${escapeHTML(p.name)}</h3>
+          <p style="font-size:0.85rem;color:var(--ink-60);margin-bottom:18px;">Select how confident you felt solving this problem. The revision engine adapts your future study schedule based on your honest feedback.</p>
           <form id="dmReviseForm">
-            <label style="display:block;margin-bottom:12px">
-              <strong>Outcome</strong>
-              <select id="dmRevOutcome" class="wide-input" style="padding:10px;border-radius:8px">
-                <option value="ac">Got AC without hints (+8 coins)</option>
-                <option value="hints">Needed hints (+4 coins)</option>
-                <option value="failed">Forgot / failed (+1 coin)</option>
-              </select>
-            </label>
+            <div style="margin-bottom:20px;">
+              <strong style="display:block;margin-bottom:12px;color:var(--ink);font-size:0.9rem;">Revision Outcome &amp; Confidence Level</strong>
+              <div style="display:grid;gap:12px;">
+                
+                <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--green);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(40,113,79,0.06);">
+                  <input type="radio" name="dmRevOutcome" value="ac" checked style="margin-top:3px;cursor:pointer;accent-color:var(--green);width:18px;height:18px;">
+                  <div>
+                    <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <span>🟢 Understood (Confident Solve)</span>
+                      <span style="font-size:0.75rem;background:rgba(40,113,79,0.15);color:var(--green);padding:2px 8px;border-radius:12px;margin-left:auto;">+8 Coins</span>
+                    </div>
+                    <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
+                      <strong style="color:var(--ink);">When to select:</strong> You solved the problem cleanly on your own without hints or notes.<br>
+                      <strong style="color:var(--ink);">What it does:</strong> Advances this problem up to the next Spaced Repetition Rung (<strong style="color:var(--green);">1d → 3d → 7d → 30d → 90d</strong>).
+                    </div>
+                  </div>
+                </label>
+
+                <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--gold);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(196,154,39,0.06);">
+                  <input type="radio" name="dmRevOutcome" value="hints" style="margin-top:3px;cursor:pointer;accent-color:var(--gold);width:18px;height:18px;">
+                  <div>
+                    <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <span>🟡 Not Confident (Shaky / Needed Hints)</span>
+                      <span style="font-size:0.75rem;background:rgba(196,154,39,0.2);color:#9c7814;padding:2px 8px;border-radius:12px;margin-left:auto;">+4 Coins</span>
+                    </div>
+                    <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
+                      <strong style="color:var(--ink);">When to select:</strong> You got stuck, looked at hints/notes, or felt shaky about your logic.<br>
+                      <strong style="color:var(--ink);">What it does:</strong> Keeps it on a shorter review leash (<strong style="color:#9c7814;">capped at 7 days max</strong>) so you review it again soon without pushing it out to 30 or 90 days.
+                    </div>
+                  </div>
+                </label>
+
+                <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--red);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(156,47,42,0.06);">
+                  <input type="radio" name="dmRevOutcome" value="failed" style="margin-top:3px;cursor:pointer;accent-color:var(--red);width:18px;height:18px;">
+                  <div>
+                    <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <span>🔴 Completely Forgot / Failed</span>
+                      <span style="font-size:0.75rem;background:rgba(156,47,42,0.15);color:var(--red);padding:2px 8px;border-radius:12px;margin-left:auto;">+1 Coin</span>
+                    </div>
+                    <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
+                      <strong style="color:var(--ink);">When to select:</strong> You completely blanked out or couldn't solve it at all.<br>
+                      <strong style="color:var(--ink);">What it does:</strong> Resets the interval back to <strong style="color:var(--red);">1 day</strong> so it appears on your desk tomorrow.
+                    </div>
+                  </div>
+                </label>
+
+              </div>
+            </div>
             <label style="display:block;margin-bottom:12px">
               <strong>Mistakes &amp; Observations</strong>
               <textarea id="dmRevMistakes" rows="3" class="wide-input notes-textarea" placeholder="What tripped you up?"></textarea>
@@ -2371,7 +2412,7 @@ window.copyCodeSnippet = function (btn, text) {
               <strong>CFFTD Note Update</strong>
               <textarea id="dmRevNotes" rows="4" class="wide-input notes-textarea" placeholder="Note for future self..."></textarea>
             </label>
-            <button class="btn primary" type="submit" style="width:100%">Submit Revision &amp; Claim Coins</button>
+            <button class="btn primary" type="submit" style="width:100%;padding:14px;font-size:1rem;font-weight:800;box-shadow:0 4px 14px rgba(196,154,39,0.3);">Submit Revision &amp; Claim Coins</button>
           </form>
         </div>
       `;
@@ -2380,7 +2421,8 @@ window.copyCodeSnippet = function (btn, text) {
       if (form) {
         form.onsubmit = (e) => {
           e.preventDefault();
-          const outcome = $("#dmRevOutcome").value;
+          const outcomeEl = document.querySelector('input[name="dmRevOutcome"]:checked');
+          const outcome = outcomeEl ? outcomeEl.value : "ac";
           const mistakes = $("#dmRevMistakes").value;
           const notes = $("#dmRevNotes").value;
 
