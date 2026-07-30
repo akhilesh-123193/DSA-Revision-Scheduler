@@ -67,6 +67,16 @@ window.copyCodeSnippet = function (btn, text) {
   let dirty = false;
   let saveQueued = false;
 
+  // ── Consistency & Accountability Engine ──
+  const INACTIVITY_TAX = 15;
+  const DECAY_KEY = 'az.decayAppliedDays';
+  const GOAL_KEY = 'az.goalConfig';
+  const PLEDGE_KEY = 'az.pledges';
+  let decayAppliedDays = safeJSONParse(localStorage.getItem(DECAY_KEY), []);
+  let goalConfig = safeJSONParse(localStorage.getItem(GOAL_KEY), null);
+  let pledges = safeJSONParse(localStorage.getItem(PLEDGE_KEY), {});
+
+
   // Focus timer state
   let focusState = {
     running: false,
@@ -177,6 +187,14 @@ window.copyCodeSnippet = function (btn, text) {
     // Header palette button + digest copy button
     $('#paletteOpenBtn')?.addEventListener('click', toggleCommandPalette);
     $('#copyDigestBtn')?.addEventListener('click', copyDigest);
+
+    // Motivation engine events
+    $('#editGoalBtn')?.addEventListener('click', openGoalDialog);
+    $('#goalForm')?.addEventListener('submit', saveGoal);
+    $('#clearGoalBtn')?.addEventListener('click', clearGoal);
+    $$('#goalDialog [data-close-dialog]').forEach(btn => {
+      btn.addEventListener('click', () => $('#goalDialog')?.close());
+    });
 
     window.addEventListener('beforeunload', () => { if (dirty) flushSave(); });
   }
@@ -397,6 +415,11 @@ window.copyCodeSnippet = function (btn, text) {
     renderAnalytics();
     renderFocusProblemOptions();
     renderStudyHub();
+    applyInactivityDecay();
+    renderCoachBanner();
+    renderWarRoom();
+    renderPledge();
+    renderChain();
     saveState();
   }
 
@@ -2330,69 +2353,126 @@ window.copyCodeSnippet = function (btn, text) {
       `;
       bodyEl.innerHTML = html;
     } else if (activeDmTab === "revise") {
-      bodyEl.innerHTML = `
-        <div style="max-width:580px;margin:0 auto;background:rgba(255,252,242,0.9);padding:24px;border-radius:16px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(28,21,16,0.06);">
-          <h3 style="margin-top:0;font-size:1.15rem;color:var(--ink)">Stamp Revision for ${escapeHTML(p.name)}</h3>
-          <p style="font-size:0.85rem;color:var(--ink-60);margin-bottom:18px;">Select how confident you felt solving this problem. The revision engine adapts your future study schedule based on your honest feedback.</p>
-          <form id="dmReviseForm">
-            <div style="margin-bottom:20px;">
-              <strong style="display:block;margin-bottom:12px;color:var(--ink);font-size:0.9rem;">Revision Outcome &amp; Confidence Level</strong>
-              <div style="display:grid;gap:12px;">
-                
-                <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--green);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(40,113,79,0.06);">
-                  <input type="radio" name="dmRevOutcome" value="ac" checked style="margin-top:3px;cursor:pointer;accent-color:var(--green);width:18px;height:18px;">
-                  <div>
-                    <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                      <span>🟢 Understood (Confident Solve)</span>
-                      <span style="font-size:0.75rem;background:rgba(40,113,79,0.15);color:var(--green);padding:2px 8px;border-radius:12px;margin-left:auto;">+8 Coins</span>
-                    </div>
-                    <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
-                      <strong style="color:var(--ink);">When to select:</strong> You solved the problem cleanly on your own without hints or notes.<br>
-                      <strong style="color:var(--ink);">What it does:</strong> Advances this problem up to the next Spaced Repetition Rung (<strong style="color:var(--green);">1d → 3d → 7d → 30d → 90d</strong>).
-                    </div>
-                  </div>
-                </label>
 
-                <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--gold);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(196,154,39,0.06);">
-                  <input type="radio" name="dmRevOutcome" value="hints" style="margin-top:3px;cursor:pointer;accent-color:var(--gold);width:18px;height:18px;">
-                  <div>
-                    <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                      <span>🟡 Not Confident (Shaky / Needed Hints)</span>
-                      <span style="font-size:0.75rem;background:rgba(196,154,39,0.2);color:#9c7814;padding:2px 8px;border-radius:12px;margin-left:auto;">+4 Coins</span>
-                    </div>
-                    <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
-                      <strong style="color:var(--ink);">When to select:</strong> You got stuck, looked at hints/notes, or felt shaky about your logic.<br>
-                      <strong style="color:var(--ink);">What it does:</strong> Keeps it on a shorter review leash (<strong style="color:#9c7814;">capped at 7 days max</strong>) so you review it again soon without pushing it out to 30 or 90 days.
-                    </div>
-                  </div>
-                </label>
+      const cfftd = p.cfftd || {};
+      const cfftdFields = [
+        { key: "f1", label: "First Thought / Intuition", icon: "💭" },
+        { key: "c", label: "Core Concept", icon: "🧠" },
+        { key: "t", label: "Technique", icon: "🛠️" },
+        { key: "d", label: "Debugging / Gotchas", icon: "🐞" }
+      ].filter(f => cfftd[f.key] && cfftd[f.key].trim());
 
-                <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--red);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(156,47,42,0.06);">
-                  <input type="radio" name="dmRevOutcome" value="failed" style="margin-top:3px;cursor:pointer;accent-color:var(--red);width:18px;height:18px;">
-                  <div>
-                    <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                      <span>🔴 Completely Forgot / Failed</span>
-                      <span style="font-size:0.75rem;background:rgba(156,47,42,0.15);color:var(--red);padding:2px 8px;border-radius:12px;margin-left:auto;">+1 Coin</span>
-                    </div>
-                    <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
-                      <strong style="color:var(--ink);">When to select:</strong> You completely blanked out or couldn't solve it at all.<br>
-                      <strong style="color:var(--ink);">What it does:</strong> Resets the interval back to <strong style="color:var(--red);">1 day</strong> so it appears on your desk tomorrow.
-                    </div>
-                  </div>
-                </label>
-
+      let recallHtml = '';
+      if (cfftdFields.length > 0 || (cfftd.notes && cfftd.notes.trim())) {
+        recallHtml = `
+          <div class="active-recall-panel" style="margin-bottom:24px;background:var(--cream-3);border:2px solid var(--gold);border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(196,154,39,0.12);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div>
+                <h4 style="margin:0;font-size:1.1rem;color:var(--ink);">Active Recall Safety Net</h4>
+                <p style="margin:4px 0 0;font-size:0.8rem;color:var(--ink-60);">Blanking out? Reveal hints progressively instead of looking at the full solution.</p>
               </div>
             </div>
-            <label style="display:block;margin-bottom:12px">
-              <strong>Mistakes &amp; Observations</strong>
-              <textarea id="dmRevMistakes" rows="3" class="wide-input notes-textarea" placeholder="What tripped you up?"></textarea>
-            </label>
-            <label style="display:block;margin-bottom:16px">
-              <strong>CFFTD Note Update</strong>
-              <textarea id="dmRevNotes" rows="4" class="wide-input notes-textarea" placeholder="Note for future self..."></textarea>
-            </label>
-            <button class="btn primary" type="submit" style="width:100%;padding:14px;font-size:1rem;font-weight:800;box-shadow:0 4px 14px rgba(196,154,39,0.3);">Submit Revision &amp; Claim Coins</button>
-          </form>
+            <div style="display:grid;gap:12px;">
+              ${cfftdFields.map((f, i) => `
+                <div class="recall-item" style="background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+                  <button type="button" class="recall-reveal-btn" style="width:100%;text-align:left;padding:12px 16px;background:rgba(196,154,39,0.05);border:none;border-bottom:1px solid transparent;cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ink);transition:all 0.2s;" onclick="this.nextElementSibling.classList.toggle('hidden');this.style.borderBottomColor='var(--border)';this.style.background='#fff';">
+                    <span style="font-size:1.2rem;">${f.icon}</span> 
+                    Reveal Hint ${i+1}: ${f.label}
+                  </button>
+                  <div class="recall-content hidden" style="padding:16px;background:#fff;font-size:0.9rem;border-top:1px solid var(--border);">
+                    <div class="notes-rich">${renderRichNotes(cfftd[f.key])}</div>
+                  </div>
+                </div>
+              `).join('')}
+              
+              ${(cfftd.notes && cfftd.notes.trim()) ? `
+                <div class="recall-item" style="background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+                  <button type="button" class="recall-reveal-btn" style="width:100%;text-align:left;padding:12px 16px;background:rgba(156,47,42,0.05);border:none;cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:700;color:var(--red);transition:all 0.2s;" onclick="this.nextElementSibling.classList.toggle('hidden');this.style.borderBottomColor='var(--border)';this.style.background='#fff';">
+                    <span style="font-size:1.2rem;">🚨</span> 
+                    Reveal Full Study Notes (Last Resort)
+                  </button>
+                  <div class="recall-content hidden" style="padding:16px;background:#fff;font-size:0.9rem;border-top:1px solid var(--border);">
+                    <div class="notes-rich">${renderRichNotes(cfftd.notes)}</div>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      } else {
+        recallHtml = `
+          <div class="active-recall-panel" style="margin-bottom:24px;background:var(--cream-3);border:1px dashed var(--ink-25);border-radius:12px;padding:20px;text-align:center;">
+            <p style="margin:0;font-size:0.9rem;color:var(--ink-60);">No study notes or hints exist for this problem yet. Add them below after your revision so your future self has a safety net!</p>
+          </div>
+        `;
+      }
+
+      bodyEl.innerHTML = `
+        <div style="max-width:640px;margin:0 auto;">
+          ${recallHtml}
+          <div style="background:rgba(255,252,242,0.9);padding:24px;border-radius:16px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(28,21,16,0.06);">
+            <h3 style="margin-top:0;font-size:1.15rem;color:var(--ink)">Stamp Revision for ${escapeHTML(p.name)}</h3>
+            <p style="font-size:0.85rem;color:var(--ink-60);margin-bottom:18px;">Select how confident you felt solving this problem. The revision engine adapts your future study schedule based on your honest feedback.</p>
+            <form id="dmReviseForm">
+              <div style="margin-bottom:20px;">
+                <strong style="display:block;margin-bottom:12px;color:var(--ink);font-size:0.9rem;">Revision Outcome &amp; Confidence Level</strong>
+                <div style="display:grid;gap:12px;">
+                  
+                  <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--green);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(40,113,79,0.06);">
+                    <input type="radio" name="dmRevOutcome" value="ac" checked style="margin-top:3px;cursor:pointer;accent-color:var(--green);width:18px;height:18px;">
+                    <div>
+                      <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span>🟢 Understood (Confident Solve)</span>
+                        <span style="font-size:0.75rem;background:rgba(40,113,79,0.15);color:var(--green);padding:2px 8px;border-radius:12px;margin-left:auto;">+8 Coins</span>
+                      </div>
+                      <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
+                        <strong style="color:var(--ink);">When to select:</strong> You solved the problem cleanly on your own without hints or notes.<br>
+                        <strong style="color:var(--ink);">What it does:</strong> Advances this problem up to the next Spaced Repetition Rung (<strong style="color:var(--green);">1d → 3d → 7d → 30d → 90d</strong>).
+                      </div>
+                    </div>
+                  </label>
+  
+                  <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--gold);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(196,154,39,0.06);">
+                    <input type="radio" name="dmRevOutcome" value="hints" style="margin-top:3px;cursor:pointer;accent-color:var(--gold);width:18px;height:18px;">
+                    <div>
+                      <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span>🟡 Not Confident (Shaky / Needed Hints)</span>
+                        <span style="font-size:0.75rem;background:rgba(196,154,39,0.2);color:#9c7814;padding:2px 8px;border-radius:12px;margin-left:auto;">+4 Coins</span>
+                      </div>
+                      <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
+                        <strong style="color:var(--ink);">When to select:</strong> You got stuck, looked at hints/notes, or felt shaky about your logic.<br>
+                        <strong style="color:var(--ink);">What it does:</strong> Keeps it on a shorter review leash (<strong style="color:#9c7814;">capped at 7 days max</strong>) so you review it again soon without pushing it out to 30 or 90 days.
+                      </div>
+                    </div>
+                  </label>
+  
+                  <label class="rev-outcome-card" style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:16px;background:rgba(255,255,255,0.75);border:2px solid var(--red);border-radius:12px;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(156,47,42,0.06);">
+                    <input type="radio" name="dmRevOutcome" value="failed" style="margin-top:3px;cursor:pointer;accent-color:var(--red);width:18px;height:18px;">
+                    <div>
+                      <div style="font-weight:800;color:var(--ink);font-size:0.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span>🔴 Completely Forgot / Failed</span>
+                        <span style="font-size:0.75rem;background:rgba(156,47,42,0.15);color:var(--red);padding:2px 8px;border-radius:12px;margin-left:auto;">+1 Coin</span>
+                      </div>
+                      <div style="font-size:0.82rem;color:var(--ink-60);margin-top:6px;line-height:1.4;">
+                        <strong style="color:var(--ink);">When to select:</strong> You completely blanked out or couldn't solve it at all.<br>
+                        <strong style="color:var(--ink);">What it does:</strong> Resets the interval back to <strong style="color:var(--red);">1 day</strong> so it appears on your desk tomorrow.
+                      </div>
+                    </div>
+                  </label>
+  
+                </div>
+              </div>
+              <label style="display:block;margin-bottom:12px">
+                <strong>Mistakes &amp; Observations</strong>
+                <textarea id="dmRevMistakes" rows="3" class="wide-input notes-textarea" placeholder="What tripped you up?"></textarea>
+              </label>
+              <label style="display:block;margin-bottom:16px">
+                <strong>CFFTD Note Update</strong>
+                <textarea id="dmRevNotes" rows="4" class="wide-input notes-textarea" placeholder="Note for future self..."></textarea>
+              </label>
+              <button class="btn primary" type="submit" style="width:100%;padding:14px;font-size:1rem;font-weight:800;box-shadow:0 4px 14px rgba(196,154,39,0.3);">Submit Revision &amp; Claim Coins</button>
+            </form>
+          </div>
         </div>
       `;
 
@@ -2918,6 +2998,382 @@ window.copyCodeSnippet = function (btn, text) {
         </div>
         ${notesHtml}
       `;
+    }
+  }
+
+
+  /* ============================================================
+     CONSISTENCY & ACCOUNTABILITY ENGINE
+  ============================================================ */
+
+  // ── Inactivity Decay: -15 coins for each missed day ──
+  function applyInactivityDecay() {
+    const today = todayISO();
+    const loginDays = new Set(state.gamification.loginDays || []);
+    const frozen = new Set(state.gamification.freezeUsedDays || []);
+    let changed = false;
+
+    // Check all days from 30 days ago to yesterday
+    for (let i = 1; i <= 30; i++) {
+      const day = addDaysISO(today, -i);
+      if (decayAppliedDays.includes(day)) continue;
+      if (loginDays.has(day) || frozen.has(day)) continue;
+
+      // This day was missed — apply decay
+      const m = metricsForDate(day);
+      if (m.solved + m.revisions + m.tasks > 0) continue; // Had some activity
+
+      // Only apply if it's a day where the app existed (after first login)
+      const firstLogin = (state.gamification.loginDays || []).sort()[0];
+      if (!firstLogin || day < firstLogin) continue;
+
+      state.gamification.coinLedger.push({
+        id: `decay:${day}`,
+        type: 'decay',
+        amount: -INACTIVITY_TAX,
+        label: `📉 Inactivity Tax — ${formatShortDate(day)}`,
+        createdAt: new Date().toISOString(),
+        date: day
+      });
+      decayAppliedDays.push(day);
+      changed = true;
+    }
+
+    if (changed) {
+      localStorage.setItem(DECAY_KEY, JSON.stringify(decayAppliedDays));
+      syncCoins();
+      saveState();
+    }
+  }
+
+  // ── Accountability Coach Messages ──
+  function renderCoachBanner() {
+    const banner = $('#coachBanner');
+    const textEl = $('#coachText');
+    const subEl = $('#coachSubText');
+    if (!banner || !textEl) return;
+
+    const today = todayISO();
+    const streak = currentStreak();
+    const m = metricsForDate(today);
+    const todayActivity = m.solved + m.revisions + m.tasks;
+    const due = dueProblems().length;
+    const hour = new Date().getHours();
+    const checkedIn = state.gamification.loginDays.includes(today);
+    const yMissed = yesterdayMissed();
+    const longestStreak = longestStreakEver();
+
+    let icon = '🧠';
+    let text = '';
+    let sub = '';
+    let mood = ''; // '', 'coach-danger', 'coach-success'
+
+    if (yMissed && !checkedIn) {
+      icon = '💀';
+      text = `Yesterday was wasted. −${INACTIVITY_TAX} coins deducted. The chain broke. Are you going to let today die too?`;
+      sub = `Your streak was ${longestStreak} days. Now it's gone.`;
+      mood = 'coach-danger';
+    } else if (!checkedIn && hour >= 20) {
+      icon = '⚠️';
+      text = `It's ${hour}:00. You still haven't checked in. The chain is about to snap.`;
+      sub = `${streak} day streak on the line. Check in now or lose it all.`;
+      mood = 'coach-danger';
+    } else if (!checkedIn && hour >= 14) {
+      icon = '⏰';
+      text = `Half the day is gone. No check-in. No activity. The clock doesn't wait.`;
+      sub = due > 0 ? `${due} revision${s(due)} waiting. Your future self is watching.` : 'At least check in to keep the chain alive.';
+      mood = 'coach-danger';
+    } else if (todayActivity === 0 && checkedIn && hour >= 12) {
+      icon = '😐';
+      text = `Checked in but did nothing. A check-in without action is just an alibi.`;
+      sub = due > 0 ? `${due} problem${s(due)} due for revision. Open one.` : 'Solve a new problem. Add it to the log. Prove something.';
+      mood = '';
+    } else if (todayActivity >= 3) {
+      icon = '🔥';
+      text = `Domination. ${todayActivity} stamps today. The chain grows stronger.`;
+      sub = streak > 1 ? `${streak}-day streak. You're building something unstoppable.` : 'First day of the new chain. Don\'t let tomorrow be different.';
+      mood = 'coach-success';
+    } else if (todayActivity > 0) {
+      icon = '⚡';
+      text = `${todayActivity} stamp${s(todayActivity)} so far. Decent, but don't stop.`;
+      sub = due > 0 ? `${due} more revision${s(due)} waiting on the desk.` : 'Can you add one more problem today?';
+      mood = '';
+    } else if (hour < 10 && checkedIn) {
+      icon = '☀️';
+      text = `Morning check-in done. Streak: ${streak} day${s(streak)}. Now earn it.`;
+      sub = due > 0 ? `${due} revision${s(due)} on the desk. Attack.` : 'Clean desk — solve a new problem today.';
+      mood = '';
+    } else if (hour < 10) {
+      icon = '🌅';
+      text = `New day. ${streak > 0 ? `${streak}-day streak alive.` : 'No active streak.'} Check in to keep the fire burning.`;
+      sub = 'Consistency beats intensity. Every single day.';
+      mood = '';
+    } else {
+      icon = '📰';
+      text = streak > 0
+        ? `${streak}-day streak active. ${due > 0 ? `${due} revision${s(due)} due.` : 'Desk is clear.'}`
+        : 'No active streak. Today is the day to start one.';
+      sub = 'The best time to start was yesterday. The next best time is now.';
+      mood = '';
+    }
+
+    banner.className = 'coach-banner' + (mood ? ' ' + mood : '');
+    $('#coachBanner .coach-icon').textContent = icon;
+    textEl.textContent = text;
+    subEl.textContent = sub;
+  }
+
+  // ── War Room: Goal Countdown ──
+  function openGoalDialog() {
+    const dialog = $('#goalDialog');
+    if (!dialog) return;
+    if (goalConfig) {
+      $('#goalName').value = goalConfig.name || '';
+      $('#goalDate').value = goalConfig.date || '';
+      $('#goalTarget').value = goalConfig.target || '';
+    } else {
+      $('#goalName').value = '';
+      $('#goalDate').value = '';
+      $('#goalTarget').value = '';
+    }
+    dialog.showModal();
+  }
+
+  function saveGoal(e) {
+    e.preventDefault();
+    goalConfig = {
+      name: $('#goalName').value.trim(),
+      date: $('#goalDate').value,
+      target: Number($('#goalTarget').value) || 100,
+      createdAt: goalConfig?.createdAt || todayISO()
+    };
+    localStorage.setItem(GOAL_KEY, JSON.stringify(goalConfig));
+    $('#goalDialog')?.close();
+    renderWarRoom();
+    toast('Mission set. The countdown begins.');
+  }
+
+  function clearGoal() {
+    goalConfig = null;
+    localStorage.removeItem(GOAL_KEY);
+    $('#goalDialog')?.close();
+    renderWarRoom();
+    toast('Mission cleared.');
+  }
+
+  function renderWarRoom() {
+    const el = $('#warRoomContent');
+    const titleEl = $('#warRoomTitle');
+    if (!el) return;
+
+    if (!goalConfig) {
+      titleEl.textContent = 'Set Your Mission';
+      el.innerHTML = `<div class="war-room-empty">
+        <p>No mission set. Define a goal to activate the countdown.</p>
+        <button class="btn primary" type="button" id="wrSetGoalBtn">⚔ Set Mission</button>
+      </div>`;
+      $('#wrSetGoalBtn')?.addEventListener('click', openGoalDialog);
+      return;
+    }
+
+    titleEl.textContent = goalConfig.name;
+    const today = todayISO();
+    const daysLeft = Math.max(0, daysBetween(today, goalConfig.date));
+    const totalDays = Math.max(1, daysBetween(goalConfig.createdAt, goalConfig.date));
+    const elapsed = totalDays - daysLeft;
+    const pct = Math.min(100, Math.round((elapsed / totalDays) * 100));
+
+    const totalProblems = state.problems.filter(p => !p.archived).length;
+    const remaining = Math.max(0, goalConfig.target - totalProblems);
+    const dailyNeeded = daysLeft > 0 ? Math.ceil(remaining / daysLeft) : remaining;
+
+    // Active days count
+    const loginDays = new Set(state.gamification.loginDays || []);
+    let activeDays = 0;
+    for (let i = 0; i < elapsed; i++) {
+      const d = addDaysISO(goalConfig.createdAt, i);
+      if (loginDays.has(d)) activeDays++;
+    }
+
+    // Update ring
+    const circumference = 2 * Math.PI * 52;
+    const offset = circumference - (pct / 100) * circumference;
+    const fill = $('#cdRingFill');
+    if (fill) {
+      fill.style.strokeDasharray = circumference;
+      fill.style.strokeDashoffset = offset;
+      if (daysLeft <= 7) fill.style.stroke = '#9c2f2a';
+      else if (daysLeft <= 30) fill.style.stroke = '#c49a27';
+      else fill.style.stroke = '#28714f';
+    }
+
+    $('#cdDaysNum').textContent = daysLeft;
+    $('#wrProblemsTotal').textContent = totalProblems;
+    $('#wrProblemsNeeded').textContent = daysLeft > 0 ? `${dailyNeeded}/day` : '—';
+    $('#wrDaysActive').textContent = activeDays;
+  }
+
+  // ── Daily Pledge System ──
+  function renderPledge() {
+    const el = $('#pledgeContent');
+    const statusEl = $('#pledgeStatus');
+    if (!el) return;
+
+    const today = todayISO();
+    const todayPledge = pledges[today];
+    const m = metricsForDate(today);
+    const hour = new Date().getHours();
+
+    if (!todayPledge) {
+      statusEl.textContent = '';
+      statusEl.className = 'pledge-status';
+      el.innerHTML = `
+        <form id="pledgeForm" class="pledge-form">
+          <label>Problems to solve
+            <input type="number" id="pledgeProblems" min="0" value="1" />
+          </label>
+          <label>Revisions to do
+            <input type="number" id="pledgeRevisions" min="0" value="1" />
+          </label>
+          <label>Tasks to complete
+            <input type="number" id="pledgeTasks" min="0" value="2" />
+          </label>
+          <button class="btn primary small" type="submit">🤝 I Pledge</button>
+        </form>
+        <p style="font-size:.78rem;color:var(--ink-60);margin-top:10px;font-family:ui-sans-serif,system-ui">
+          Commit to today's goals. Breaking a pledge costs you nothing — except self-respect.
+        </p>
+      `;
+      $('#pledgeForm')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        pledges[today] = {
+          problems: Number($('#pledgeProblems').value) || 0,
+          revisions: Number($('#pledgeRevisions').value) || 0,
+          tasks: Number($('#pledgeTasks').value) || 0,
+          createdAt: new Date().toISOString()
+        };
+        localStorage.setItem(PLEDGE_KEY, JSON.stringify(pledges));
+        renderPledge();
+        toast('Pledge locked in. Now prove it.');
+        playTick();
+      });
+    } else {
+      const pSolved = m.solved >= todayPledge.problems;
+      const pRevised = m.revisions >= todayPledge.revisions;
+      const pTasks = m.tasks >= todayPledge.tasks;
+      const allMet = pSolved && pRevised && pTasks;
+      const anyMet = pSolved || pRevised || pTasks;
+
+      if (allMet) {
+        statusEl.textContent = '✓ PLEDGE KEPT';
+        statusEl.className = 'pledge-status kept';
+      } else if (hour >= 22) {
+        statusEl.textContent = '✕ PLEDGE BROKEN';
+        statusEl.className = 'pledge-status broken';
+      } else {
+        statusEl.textContent = 'IN PROGRESS';
+        statusEl.className = 'pledge-status pending';
+      }
+
+      el.innerHTML = `
+        <div class="pledge-recap">
+          <div class="pledge-metric">
+            <span class="pm-num ${pSolved ? 'pm-achieved' : 'pm-behind'}">${m.solved}</span>
+            <span class="pm-lbl">${pSolved ? '✓' : '✕'} problems</span>
+            <span class="pm-target">pledged ${todayPledge.problems}</span>
+          </div>
+          <div class="pledge-metric">
+            <span class="pm-num ${pRevised ? 'pm-achieved' : 'pm-behind'}">${m.revisions}</span>
+            <span class="pm-lbl">${pRevised ? '✓' : '✕'} revisions</span>
+            <span class="pm-target">pledged ${todayPledge.revisions}</span>
+          </div>
+          <div class="pledge-metric">
+            <span class="pm-num ${pTasks ? 'pm-achieved' : 'pm-behind'}">${m.tasks}</span>
+            <span class="pm-lbl">${pTasks ? '✓' : '✕'} tasks</span>
+            <span class="pm-target">pledged ${todayPledge.tasks}</span>
+          </div>
+        </div>
+        ${!allMet && hour < 22 ? '<p style="font-size:.78rem;color:var(--red);margin-top:12px;font-family:ui-sans-serif,system-ui;font-weight:600">You gave your word. Keep it.</p>' : ''}
+        ${allMet ? '<p style="font-size:.78rem;color:var(--green);margin-top:12px;font-family:ui-sans-serif,system-ui;font-weight:600">✓ Pledge fulfilled. You kept your word today.</p>' : ''}
+      `;
+    }
+  }
+
+  // ── The Chain: 30-Day Streak Visualization ──
+  function longestStreakEver() {
+    const days = [...(state.gamification.loginDays || [])].sort();
+    const frozen = new Set(state.gamification.freezeUsedDays || []);
+    if (!days.length) return 0;
+    let best = 0, run = 0;
+    let prev = null;
+    // Build a set of all "covered" days
+    const allDays = new Set([...days, ...frozen]);
+    const sorted = [...allDays].sort();
+    for (const d of sorted) {
+      if (!prev || daysBetween(prev, d) === 1) {
+        run++;
+      } else {
+        run = 1;
+      }
+      if (run > best) best = run;
+      prev = d;
+    }
+    return best;
+  }
+
+  function renderChain() {
+    const grid = $('#chainGrid');
+    const curEl = $('#chainCurrent');
+    const bestEl = $('#chainBest');
+    if (!grid) return;
+
+    const today = todayISO();
+    const streak = currentStreak();
+    const best = longestStreakEver();
+    if (curEl) curEl.textContent = streak;
+    if (bestEl) bestEl.textContent = best;
+
+    const loginDays = new Set(state.gamification.loginDays || []);
+    const frozen = new Set(state.gamification.freezeUsedDays || []);
+    const firstLogin = (state.gamification.loginDays || []).sort()[0] || today;
+
+    grid.innerHTML = '';
+    // Show last 30 days + today
+    for (let i = 30; i >= 0; i--) {
+      const day = addDaysISO(today, -i);
+      const link = document.createElement('div');
+      link.className = 'chain-link';
+
+      const dayNum = Number(day.slice(8, 10));
+
+      if (day > today) {
+        link.classList.add('future');
+        link.textContent = dayNum;
+      } else if (day === today) {
+        if (loginDays.has(day)) {
+          link.classList.add('active', 'today');
+          link.textContent = '✓';
+        } else {
+          link.classList.add('future');
+          link.textContent = dayNum;
+          link.style.border = '2px solid var(--gold)';
+        }
+      } else if (loginDays.has(day)) {
+        link.classList.add('active');
+        link.textContent = dayNum;
+      } else if (frozen.has(day)) {
+        link.classList.add('frozen');
+        link.textContent = '❄';
+      } else if (day >= firstLogin) {
+        link.classList.add('missed');
+        link.textContent = '✕';
+      } else {
+        link.classList.add('future');
+        link.textContent = dayNum;
+      }
+
+      link.title = formatShortDate(day);
+      grid.append(link);
     }
   }
 

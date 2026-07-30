@@ -1989,3 +1989,367 @@ body.ready { opacity:1; }
   overflow-y: auto;
   padding: 24px 32px;
 }
+
+/* ================================================================
+   CONSISTENCY & ACCOUNTABILITY ENGINE
+================================================================ */
+
+/* ── Accountability Coach Banner ── */
+.coach-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  margin-bottom: 20px;
+  border-radius: var(--rad-sm);
+  background: linear-gradient(135deg, #1e1811 0%, #2a1f15 100%);
+  border: 1px solid rgba(196,154,39,.25);
+  position: relative;
+  overflow: hidden;
+  animation: coachPulse 4s ease-in-out infinite;
+}
+.coach-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(196,154,39,.03) 0 1px, transparent 1px 6px);
+  pointer-events: none;
+}
+.coach-banner.coach-danger {
+  border-color: rgba(156,47,42,.5);
+  background: linear-gradient(135deg, #2a1510 0%, #1e1811 100%);
+  animation: coachDanger 2s ease-in-out infinite;
+}
+.coach-banner.coach-success {
+  border-color: rgba(40,113,79,.4);
+  background: linear-gradient(135deg, #0f1e15 0%, #1e1811 100%);
+}
+.coach-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(196,154,39,.3));
+}
+.coach-text {
+  color: #f5ead6;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: Georgia, serif;
+  line-height: 1.4;
+}
+.coach-sub {
+  color: rgba(245,234,214,.45);
+  font-size: .78rem;
+  font-family: ui-sans-serif, system-ui;
+  margin-top: 4px;
+}
+@keyframes coachPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196,154,39,.0); }
+  50%      { box-shadow: 0 0 20px 2px rgba(196,154,39,.08); }
+}
+@keyframes coachDanger {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(156,47,42,.0); }
+  50%      { box-shadow: 0 0 24px 4px rgba(156,47,42,.15); }
+}
+
+/* ── War Room: Goal Countdown ── */
+.war-room {
+  padding: 24px;
+  border: 2px solid rgba(156,47,42,.18);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(156,47,42,.04) 0%, var(--panel-bg) 100%);
+  position: relative;
+}
+.war-room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+.war-room-content {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.countdown-ring-wrap {
+  flex-shrink: 0;
+}
+.countdown-svg {
+  width: 140px;
+  height: 140px;
+  transform: rotate(-90deg);
+}
+.cd-ring-bg {
+  fill: none;
+  stroke: var(--ink-10);
+  stroke-width: 8;
+}
+.cd-ring-fill {
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 326.73;
+  stroke-dashoffset: 326.73;
+  transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1);
+  filter: drop-shadow(0 0 6px rgba(156,47,42,.4));
+}
+.cd-num {
+  font-size: 2.2rem;
+  font-weight: 900;
+  font-family: Georgia, serif;
+  fill: var(--ink);
+  transform: rotate(90deg);
+  transform-origin: 60px 54px;
+}
+.cd-label {
+  font-size: .7rem;
+  fill: var(--ink-60);
+  font-family: ui-sans-serif, system-ui;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  transform: rotate(90deg);
+  transform-origin: 60px 72px;
+}
+.war-room-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-width: 200px;
+}
+.wr-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.wr-stat-num {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--ink);
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+.wr-stat-lbl {
+  font-size: .82rem;
+  color: var(--ink-60);
+  font-family: ui-sans-serif, system-ui;
+}
+.war-room-empty {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--ink-60);
+  font-size: .95rem;
+}
+.war-room-empty button {
+  margin-top: 16px;
+}
+
+/* ── Daily Pledge ── */
+.daily-pledge {
+  padding: 24px;
+  border: 2px solid rgba(196,154,39,.15);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(196,154,39,.04) 0%, var(--panel-bg) 100%);
+}
+.pledge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.pledge-status {
+  font-size: .78rem;
+  font-family: ui-sans-serif, system-ui;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.pledge-status.kept {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.pledge-status.broken {
+  background: var(--red-bg);
+  color: var(--red);
+}
+.pledge-status.pending {
+  background: var(--gold-bg);
+  color: var(--gold);
+}
+.pledge-form {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.pledge-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: .78rem;
+  color: var(--ink-60);
+  font-family: ui-sans-serif, system-ui;
+}
+.pledge-form input {
+  width: 70px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--rad-sm);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  background: var(--cream-3);
+}
+.pledge-recap {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pledge-metric {
+  text-align: center;
+}
+.pledge-metric .pm-num {
+  font-size: 1.6rem;
+  font-weight: 900;
+  display: block;
+  line-height: 1;
+}
+.pledge-metric .pm-lbl {
+  font-size: .72rem;
+  color: var(--ink-60);
+  font-family: ui-sans-serif, system-ui;
+}
+.pledge-metric .pm-target {
+  font-size: .72rem;
+  color: var(--ink-25);
+  font-family: ui-sans-serif, system-ui;
+}
+.pm-achieved { color: var(--green) !important; }
+.pm-behind   { color: var(--red) !important; }
+
+/* ── The Chain ── */
+.chain-card {
+  padding: 24px;
+  border: 2px solid var(--ink-10);
+  border-radius: var(--radius);
+}
+.chain-records {
+  display: flex;
+  gap: 16px;
+  font-size: .82rem;
+  font-family: ui-sans-serif, system-ui;
+  color: var(--ink-60);
+}
+.chain-records strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+.chain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 36px);
+  gap: 6px;
+  justify-content: center;
+}
+.chain-link {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .65rem;
+  font-weight: 700;
+  font-family: ui-sans-serif, system-ui;
+  position: relative;
+  transition: transform .15s ease, box-shadow .15s ease;
+  cursor: default;
+}
+.chain-link:hover {
+  transform: scale(1.15);
+  z-index: 2;
+}
+.chain-link.active {
+  background: linear-gradient(135deg, #c49a27, #e6b84d);
+  color: #1c1510;
+  box-shadow: 0 0 12px rgba(196,154,39,.35);
+  animation: chainGlow 3s ease-in-out infinite;
+}
+.chain-link.active.today {
+  background: linear-gradient(135deg, #28714f, #3d9b6e);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(40,113,79,.4);
+  animation: chainGlowGreen 2s ease-in-out infinite;
+}
+.chain-link.missed {
+  background: rgba(156,47,42,.12);
+  color: var(--red);
+  border: 1px dashed rgba(156,47,42,.3);
+}
+.chain-link.frozen {
+  background: rgba(29,64,96,.1);
+  color: var(--blue);
+  border: 1px solid rgba(29,64,96,.2);
+}
+.chain-link.future {
+  background: var(--ink-10);
+  color: var(--ink-25);
+  border: 1px solid transparent;
+}
+@keyframes chainGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(196,154,39,.2); }
+  50%      { box-shadow: 0 0 18px rgba(196,154,39,.45); }
+}
+@keyframes chainGlowGreen {
+  0%, 100% { box-shadow: 0 0 8px rgba(40,113,79,.25); }
+  50%      { box-shadow: 0 0 20px rgba(40,113,79,.5); }
+}
+
+/* ── Decay notification ── */
+.decay-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  margin-bottom: 12px;
+  border-radius: var(--rad-sm);
+  background: rgba(156,47,42,.08);
+  border: 1px solid rgba(156,47,42,.2);
+  color: var(--red);
+  font-size: .88rem;
+  font-family: ui-sans-serif, system-ui;
+  animation: decayShake .5s ease;
+}
+.decay-alert strong {
+  font-size: 1.1rem;
+}
+@keyframes decayShake {
+  0%, 100% { transform: translateX(0); }
+  20%  { transform: translateX(-4px); }
+  40%  { transform: translateX(4px); }
+  60%  { transform: translateX(-3px); }
+  80%  { transform: translateX(2px); }
+}
+
+/* ── Responsive adjustments ── */
+@media (max-width: 900px) {
+  .war-room-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .war-room-stats {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .chain-grid {
+    grid-template-columns: repeat(auto-fill, 30px);
+    gap: 4px;
+  }
+  .chain-link {
+    width: 30px;
+    height: 30px;
+    font-size: .58rem;
+  }
+}
