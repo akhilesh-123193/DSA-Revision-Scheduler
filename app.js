@@ -123,7 +123,6 @@ window.copyCodeSnippet = function (btn, text) {
     $('#openProblemForm').addEventListener('click', () => openProblemDialog());
     $('#openProblemFormFront')?.addEventListener('click', () => openProblemDialog());
     $('#problemForm').addEventListener('submit', addProblem);
-    $('#revisionForm').addEventListener('submit', completeRevision);
     $$('[data-close-dialog]').forEach(btn => {
       btn.addEventListener('click', () => btn.closest('dialog')?.close());
     });
@@ -594,7 +593,6 @@ window.copyCodeSnippet = function (btn, text) {
     problems.forEach(p => {
       const row = document.createElement('div');
       row.className = 'problem-row';
-      const latestMistake = latestMistakeText(p);
       const overdue = p.nextRevDate < todayISO();
       row.innerHTML = `
         <div class="problem-title" data-label="Problem">${p.url ? `<a href="${escapeAttr(p.url)}" target="_blank" rel="noopener">${escapeHTML(p.name)}</a>` : escapeHTML(p.name)}</div>
@@ -610,7 +608,6 @@ window.copyCodeSnippet = function (btn, text) {
           <button class="btn ghost small" data-deep-dive="${p.id}">Deep Dive</button>
           <button class="btn danger small" data-delete-problem="${p.id}">Delete</button>
         </div>
-        ${latestMistake ? `<div class="mistake-note"><strong>Latest note:</strong> ${escapeHTML(latestMistake)}</div>` : ''}
       `;
       $('[data-revise]', row).addEventListener('click', () => openRevisionDialog(p.id));
       $('[data-undo-revision]', row)?.addEventListener('click', () => undoRevisionToday(p.id));
@@ -1294,19 +1291,10 @@ window.copyCodeSnippet = function (btn, text) {
   }
 
   function openRevisionDialog(id) {
-    const p = state.problems.find(x => x.id === id);
-    if (!p) return;
-    $('#revisionProblemId').value = id;
-    $('#revisionTitle').textContent = p.name;
-    $('#revisionMistakes').value = '';
-    $('#revisionNotes').value = p.cfftd?.notes || '';
-    $('#revisionDialog').showModal();
-    setTimeout(() => $('#revisionOutcome').focus(), 30);
+    openDetailModal(id, "revise");
   }
 
-  function completeRevision(ev) {
-    ev.preventDefault();
-    const id = $('#revisionProblemId').value;
+  function recordRevision(id, outcome, mistakes, notes) {
     const p = state.problems.find(x => x.id === id);
     if (!p) return;
     const today = todayISO();
@@ -1314,9 +1302,8 @@ window.copyCodeSnippet = function (btn, text) {
       toast('This problem is already revised today. Undo it first if you want to redo.', 'warn');
       return;
     }
-    const outcome = $('#revisionOutcome').value;
-    const mistakes = $('#revisionMistakes').value.trim();
-    const notes = $('#revisionNotes').value.trim();
+    mistakes = mistakes.trim();
+    notes = notes.trim();
     const prevInterval = Number(p.interval || 1);
     const prevNextRevDate = p.nextRevDate;
     const nextInterval = nextIntervalFor(prevInterval, outcome);
@@ -1343,7 +1330,6 @@ window.copyCodeSnippet = function (btn, text) {
       createdAt: new Date().toISOString()
     });
     addReward(ledgerId, REWARDS.revision[outcome], `Revision stamped: ${p.name} (${labelOutcome(outcome)})`, { problemId: id, outcome });
-    $('#revisionDialog').close();
     saveState();
     renderAll();
     celebrate(`Revision stamped. +${REWARDS.revision[outcome]} coins`);
@@ -2088,13 +2074,6 @@ window.copyCodeSnippet = function (btn, text) {
     return INTERVALS[Math.min(idx + 1, INTERVALS.length - 1)];
   }
 
-  function latestMistakeText(p) {
-    const m = [...(p.revisionMistakes || [])].reverse().find(x => x.mistakes || x.notes);
-    if (m) return [m.mistakes, m.notes].filter(Boolean).join(' • ');
-    const c = p.cfftd || {};
-    return [c.c, c.f1, c.t, c.d, c.notes].filter(Boolean).join(' • ');
-  }
-
   /* ============================================================
      PROBLEM DEEP DIVE MODAL
   ============================================================ */
@@ -2427,7 +2406,6 @@ window.copyCodeSnippet = function (btn, text) {
           const notes = $("#dmRevNotes").value;
 
           recordRevision(p.id, outcome, mistakes, notes);
-          toast(`Revision recorded for ${p.name}!`, "success");
           openDetailModal(p.id, "timeline");
         };
       }
