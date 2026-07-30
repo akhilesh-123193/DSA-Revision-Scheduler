@@ -3131,10 +3131,12 @@ window.copyCodeSnippet = function (btn, text) {
       $('#goalName').value = goalConfig.name || '';
       $('#goalDate').value = goalConfig.date || '';
       $('#goalTarget').value = goalConfig.target || '';
+      $('#goalExternal').value = goalConfig.external || 0;
     } else {
       $('#goalName').value = '';
       $('#goalDate').value = '';
       $('#goalTarget').value = '';
+      $('#goalExternal').value = '0';
     }
     dialog.showModal();
   }
@@ -3145,6 +3147,7 @@ window.copyCodeSnippet = function (btn, text) {
       name: $('#goalName').value.trim(),
       date: $('#goalDate').value,
       target: Number($('#goalTarget').value) || 100,
+      external: Number($('#goalExternal').value) || 0,
       createdAt: goalConfig?.createdAt || todayISO()
     };
     localStorage.setItem(GOAL_KEY, JSON.stringify(goalConfig));
@@ -3183,7 +3186,9 @@ window.copyCodeSnippet = function (btn, text) {
     const elapsed = totalDays - daysLeft;
     const pct = Math.min(100, Math.round((elapsed / totalDays) * 100));
 
-    const totalProblems = state.problems.filter(p => !p.archived).length;
+    const externalProgress = Number(goalConfig.external) || 0;
+    const appProblems = state.problems.filter(p => !p.archived).length;
+    const totalProblems = appProblems + externalProgress;
     const remaining = Math.max(0, goalConfig.target - totalProblems);
     const dailyNeeded = daysLeft > 0 ? Math.ceil(remaining / daysLeft) : remaining;
 
