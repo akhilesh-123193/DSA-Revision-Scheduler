@@ -3127,7 +3127,8 @@ window.copyCodeSnippet = function (btn, text) {
       $('#goalName').value = state.gamification.goalConfig.name || '';
       $('#goalDate').value = state.gamification.goalConfig.date || '';
       $('#goalTarget').value = state.gamification.goalConfig.target || '';
-      $('#goalExternal').value = state.gamification.goalConfig.external || 0;
+      const appProblems = state.problems.filter(p => !p.archived).length;
+      $('#goalExternal').value = (state.gamification.goalConfig.external || 0) + appProblems;
     } else {
       $('#goalName').value = '';
       $('#goalDate').value = '';
@@ -3139,11 +3140,13 @@ window.copyCodeSnippet = function (btn, text) {
 
   function saveGoal(e) {
     e.preventDefault();
+    const appProblems = state.problems.filter(p => !p.archived).length;
+    const inputTotal = Number($('#goalExternal').value) || 0;
     state.gamification.goalConfig = {
       name: $('#goalName').value.trim(),
       date: $('#goalDate').value,
       target: Number($('#goalTarget').value) || 100,
-      external: Number($('#goalExternal').value) || 0,
+      external: Math.max(0, inputTotal - appProblems),
       createdAt: state.gamification.goalConfig?.createdAt || todayISO()
     };
     saveState();
