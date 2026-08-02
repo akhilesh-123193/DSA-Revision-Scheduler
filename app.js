@@ -3485,13 +3485,9 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
     }
   }
 
-})();
-
-
-/* ============================================================
-   AI GRADER CONFIGURATION
-============================================================ */
-(function initAIGrader() {
+  /* ============================================================
+     AI GRADER CONFIGURATION
+  ============================================================ */
   const geminiInput = $('#geminiApiKey');
   if (geminiInput) {
     if (state && state.gamification && state.gamification.geminiKey) {
@@ -3514,4 +3510,5 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
        }
     });
   }
+
 })();
