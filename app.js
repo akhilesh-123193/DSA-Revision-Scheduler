@@ -2409,9 +2409,19 @@ window.copyCodeSnippet = function (btn, text) {
 
       bodyEl.innerHTML = `
         <div style="max-width:640px;margin:0 auto;">
-          ${recallHtml}
-          <div style="background:rgba(255,252,242,0.9);padding:24px;border-radius:16px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(28,21,16,0.06);">
-            <h3 style="margin-top:0;font-size:1.15rem;color:var(--ink)">Stamp Revision for ${escapeHTML(p.name)}</h3>
+          <div id="feynmanPanel" style="margin-bottom:24px;background:#fff;border:2px solid #4f46e5;border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(79,70,229,0.12);">
+            <div style="margin-bottom:16px;">
+              <h4 style="margin:0;font-size:1.1rem;color:var(--ink);">🗣️ Feynman Interview Simulator</h4>
+              <p style="margin:4px 0 0;font-size:0.8rem;color:var(--ink-60);">If you can't explain it simply, you don't understand it well enough. Type a 2-sentence elevator pitch of your approach before proceeding.</p>
+            </div>
+            <textarea id="feynmanInput" rows="3" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);font-family:inherit;font-size:0.9rem;resize:vertical;margin-bottom:12px;" placeholder="E.g. I will use a sliding window to track the longest valid sequence, expanding the right pointer and shrinking the left when the sum exceeds K. Time is O(N) and space is O(1)."></textarea>
+            <button type="button" class="btn primary" id="feynmanSubmitBtn" style="width:100%;background:#4f46e5;color:white;">Lock in Explanation & Proceed</button>
+          </div>
+
+          <div id="hiddenRevisionContent" style="display:none;">
+            ${recallHtml}
+            <div style="background:rgba(255,252,242,0.9);padding:24px;border-radius:16px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(28,21,16,0.06);">
+              <h3 style="margin-top:0;font-size:1.15rem;color:var(--ink)">Stamp Revision for ${escapeHTML(p.name)}</h3>
             <p style="font-size:0.85rem;color:var(--ink-60);margin-bottom:18px;">Select how confident you felt solving this problem. The revision engine adapts your future study schedule based on your honest feedback.</p>
             <form id="dmReviseForm">
               <div style="margin-bottom:20px;">
@@ -2473,6 +2483,7 @@ window.copyCodeSnippet = function (btn, text) {
               <button class="btn primary" type="submit" style="width:100%;padding:14px;font-size:1rem;font-weight:800;box-shadow:0 4px 14px rgba(196,154,39,0.3);">Submit Revision &amp; Claim Coins</button>
             </form>
           </div>
+          </div> <!-- Close hiddenRevisionContent -->
         </div>
       `;
 
@@ -3407,102 +3418,3 @@ window.copyCodeSnippet = function (btn, text) {
 
 })();
 
-/* ============================================================
-   FOCUS TIMER (POMODORO) LOGIC
-============================================================ */
-(function initFocusTimer() {
-  const widget = $('#focusTimerWidget');
-  const toggleBtn = $('#ftToggleBtn');
-  const display = $('#ftDisplay');
-  const startBtn = $('#ftStartBtn');
-  const pauseBtn = $('#ftPauseBtn');
-  const resetBtn = $('#ftResetBtn');
-  const modes = document.querySelectorAll('.ft-mode');
-  
-  if (!widget) return;
-
-  let timerInterval = null;
-  let timeLeft = 25 * 60; // default 25m
-  let isRunning = false;
-  let currentMode = 25;
-
-  function updateDisplay() {
-    const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-    const s = (timeLeft % 60).toString().padStart(2, '0');
-    display.textContent = `${m}:${s}`;
-    
-    if (isRunning) {
-        document.title = `(${m}:${s}) Focus - DSA Gazette`;
-    } else {
-        document.title = `Akhilesh Daily Revision Gazette`;
-    }
-  }
-
-  function setMode(minutes) {
-    currentMode = minutes;
-    timeLeft = minutes * 60;
-    isRunning = false;
-    clearInterval(timerInterval);
-    display.className = 'ft-display' + (minutes === 5 ? ' break' : '');
-    updateDisplay();
-    
-    modes.forEach(btn => {
-      if (parseInt(btn.dataset.time) === minutes) btn.classList.add('active');
-      else btn.classList.remove('active');
-    });
-  }
-
-  function tick() {
-    if (timeLeft > 0) {
-      timeLeft--;
-      updateDisplay();
-    } else {
-      clearInterval(timerInterval);
-      isRunning = false;
-      display.classList.remove('running');
-      toast(currentMode === 5 ? 'Break is over. Back to deep work!' : 'Focus session complete. Great job!', 'success');
-      // Auto-award coins for focus? 
-      if (currentMode !== 5) {
-         if (window.state && window.state.gamification) {
-             window.state.gamification.coins += 5;
-             window.state.gamification.ledger = window.state.gamification.ledger || [];
-             window.state.gamification.ledger.unshift({ date: new Date().toISOString(), reason: `${currentMode}m Deep Focus`, amount: 5 });
-             if (window.saveState) window.saveState();
-             if (window.renderAll) window.renderAll();
-         }
-      }
-      setMode(currentMode === 25 || currentMode === 45 ? 5 : 25);
-    }
-  }
-
-  startBtn.addEventListener('click', () => {
-    if (!isRunning && timeLeft > 0) {
-      isRunning = true;
-      display.classList.add('running');
-      timerInterval = setInterval(tick, 1000);
-    }
-  });
-
-  pauseBtn.addEventListener('click', () => {
-    isRunning = false;
-    display.classList.remove('running');
-    clearInterval(timerInterval);
-    updateDisplay();
-  });
-
-  resetBtn.addEventListener('click', () => {
-    setMode(currentMode);
-  });
-
-  modes.forEach(btn => {
-    btn.addEventListener('click', () => setMode(parseInt(btn.dataset.time)));
-  });
-
-  toggleBtn.addEventListener('click', () => {
-    widget.classList.toggle('collapsed');
-    toggleBtn.textContent = widget.classList.contains('collapsed') ? '△' : '_';
-  });
-
-  // Initialize
-  setMode(25);
-})();
