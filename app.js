@@ -2517,7 +2517,7 @@ Respond EXACTLY in this format, with no markdown formatting around the output, j
 SCORE: X/10
 FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they missed complexity.]`;
 
-              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
