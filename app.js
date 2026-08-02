@@ -3486,14 +3486,14 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
 (function initAIGrader() {
   const geminiInput = $('#geminiApiKey');
   if (geminiInput) {
-    if (window.state && window.state.gamification && window.state.gamification.geminiKey) {
-      geminiInput.value = window.state.gamification.geminiKey;
+    if (state && state.gamification && state.gamification.geminiKey) {
+      geminiInput.value = state.gamification.geminiKey;
     }
     
     geminiInput.addEventListener('change', (e) => {
-      if (!window.state.gamification) window.state.gamification = {};
-      window.state.gamification.geminiKey = e.target.value.trim();
-      if (window.saveState) window.saveState();
+      if (!state.gamification) state.gamification = {};
+      state.gamification.geminiKey = e.target.value.trim();
+      if (typeof saveState === 'function') saveState();
       toast('Gemini API Key saved!', 'success');
     });
   }
