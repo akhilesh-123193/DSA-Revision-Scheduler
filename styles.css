@@ -6,37 +6,37 @@
 
 /* ── Tokens ── */
 :root {
-  /* Paper palette */
-  --cream:   #f5ead6;
-  --cream-2: #ede0c4;
-  --cream-3: #fdf6e8;
-  --ink:     #1c1510;
-  --ink-60:  rgba(28,21,16,.6);
-  --ink-25:  rgba(28,21,16,.25);
-  --ink-10:  rgba(28,21,16,.10);
+  /* Premium Dark Glass Palette */
+  --cream:   #0f172a; 
+  --cream-2: #1e293b; 
+  --cream-3: #1e293b;
+  --ink:     #f8fafc;
+  --ink-60:  rgba(248, 250, 252, 0.6);
+  --ink-25:  rgba(248, 250, 252, 0.25);
+  --ink-10:  rgba(248, 250, 252, 0.10);
 
   /* Sidebar */
-  --sidebar-bg:   #1e1811;
-  --sidebar-line: rgba(255,245,220,.10);
-  --sidebar-w:    240px;
+  --sidebar-bg:   #020617;
+  --sidebar-line: rgba(255, 255, 255, 0.05);
+  --sidebar-w:    260px;
 
-  /* Accent colours */
-  --gold:    #c49a27;
-  --gold-bg: rgba(196,154,39,.12);
-  --red:     #9c2f2a;
-  --red-bg:  rgba(156,47,42,.10);
-  --green:   #28714f;
-  --green-bg:rgba(40,113,79,.11);
-  --blue:    #1d4060;
-  --blue-bg: rgba(29,64,96,.10);
+  /* Accent colours - Neon */
+  --gold:    #8b5cf6; 
+  --gold-bg: rgba(139, 92, 246, 0.15);
+  --red:     #f43f5e;
+  --red-bg:  rgba(244, 63, 94, 0.15);
+  --green:   #10b981;
+  --green-bg:rgba(16, 185, 129, 0.15);
+  --blue:    #3b82f6;
+  --blue-bg: rgba(59, 130, 246, 0.15);
 
   /* Misc */
-  --radius:  16px;
-  --rad-sm:  10px;
-  --fast:    160ms ease;
-  --shadow:  0 20px 60px rgba(0,0,0,.22);
-  --panel-bg:rgba(255,252,242,.68);
-  --border:  rgba(28,21,16,.14);
+  --radius:  20px;
+  --rad-sm:  12px;
+  --fast:    200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow:  0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  --panel-bg: rgba(30, 41, 59, 0.7);
+  --border:  rgba(255, 255, 255, 0.08);
 }
 
 /* ── Reset ── */

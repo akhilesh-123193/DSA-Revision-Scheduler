@@ -3,3 +3,4 @@ data/backups/
 data/db.tmp.json
 .DS_Store
 *.log
+data/db.json
