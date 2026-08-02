@@ -2415,6 +2415,7 @@ window.copyCodeSnippet = function (btn, text) {
               <p style="margin:4px 0 0;font-size:0.8rem;color:var(--ink-60);">If you can't explain it simply, you don't understand it well enough. Type a 2-sentence elevator pitch of your approach before proceeding.</p>
             </div>
             <textarea id="feynmanInput" rows="3" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);font-family:inherit;font-size:0.9rem;resize:vertical;margin-bottom:12px;" placeholder="E.g. I will use a sliding window to track the longest valid sequence, expanding the right pointer and shrinking the left when the sum exceeds K. Time is O(N) and space is O(1)."></textarea>
+            <div id="feynmanFeedback" style="display:none;margin-bottom:12px;padding:12px;border-radius:8px;background:rgba(79,70,229,0.05);border:1px solid #4f46e5;font-size:0.9rem;line-height:1.4;"></div>
             <button type="button" class="btn primary" id="feynmanSubmitBtn" style="width:100%;background:#4f46e5;color:white;">Lock in Explanation & Proceed</button>
           </div>
 
@@ -2486,6 +2487,66 @@ window.copyCodeSnippet = function (btn, text) {
           </div> <!-- Close hiddenRevisionContent -->
         </div>
       `;
+
+      const fInput = $("#feynmanInput");
+      const fBtn = $("#feynmanSubmitBtn");
+      const fFeedback = $("#feynmanFeedback");
+      if (fBtn) {
+        fBtn.addEventListener("click", async () => {
+          if (fInput.value.trim().length < 15) {
+            toast("Please type a real explanation (at least 15 characters).", "warn");
+            return;
+          }
+          
+          fBtn.disabled = true;
+          const apiKey = state.gamification.geminiKey;
+          
+          if (apiKey) {
+            fBtn.textContent = "🧠 AI Interviewer is grading your pitch...";
+            try {
+              const notesContent = (p.cfftd && Object.values(p.cfftd).join(' ')) || p.notes || "No notes available.";
+              const prompt = `You are a strict Data Structures & Algorithms (DSA) technical interviewer. 
+The candidate is solving the problem '${p.name}' (Topic: ${p.topic}). 
+Your canonical solution notes are: ${notesContent}.
+
+The candidate provided the following explanation/elevator pitch:
+"${fInput.value}"
+
+Grade their explanation out of 10 based on accuracy, mentioning of correct data structures/algorithms, and time/space complexity if applicable. 
+Respond EXACTLY in this format, with no markdown formatting around the output, just raw text:
+SCORE: X/10
+FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they missed complexity.]`;
+
+              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }]
+                })
+              });
+              
+              const data = await res.json();
+              if (data.error) throw new Error(data.error.message);
+              
+              const text = data.candidates[0].content.parts[0].text;
+              
+              fFeedback.innerHTML = `<strong style="color:var(--ink)">🤖 AI Interviewer Feedback:</strong><br/>${text.replace(/\n/g, '<br/>')}`;
+              fFeedback.style.display = "block";
+              toast("Graded by AI!", "success");
+            } catch (err) {
+              console.error(err);
+              toast("AI Grading failed. Proceeding manually.", "warn");
+            }
+          } else {
+             toast("Explanation locked! (Add a Gemini API key in settings for AI grading).", "success");
+          }
+          
+          $("#feynmanPanel").style.opacity = "0.8";
+          fInput.disabled = true;
+          fBtn.style.display = "none";
+          $("#hiddenRevisionContent").style.display = "block";
+        });
+      }
 
       const form = $("#dmReviseForm");
       if (form) {
@@ -3418,3 +3479,22 @@ window.copyCodeSnippet = function (btn, text) {
 
 })();
 
+
+/* ============================================================
+   AI GRADER CONFIGURATION
+============================================================ */
+(function initAIGrader() {
+  const geminiInput = $('#geminiApiKey');
+  if (geminiInput) {
+    if (window.state && window.state.gamification && window.state.gamification.geminiKey) {
+      geminiInput.value = window.state.gamification.geminiKey;
+    }
+    
+    geminiInput.addEventListener('change', (e) => {
+      if (!window.state.gamification) window.state.gamification = {};
+      window.state.gamification.geminiKey = e.target.value.trim();
+      if (window.saveState) window.saveState();
+      toast('Gemini API Key saved!', 'success');
+    });
+  }
+})();
