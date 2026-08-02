@@ -3189,7 +3189,8 @@ window.copyCodeSnippet = function (btn, text) {
     const appProblems = state.problems.filter(p => !p.archived).length;
     const totalProblems = appProblems + externalProgress;
     const remaining = Math.max(0, state.gamification.goalConfig.target - totalProblems);
-    const dailyNeeded = daysLeft > 0 ? Math.ceil(remaining / daysLeft) : remaining;
+    // Use 1 decimal place instead of Math.ceil so the user can see fractional progress dynamically
+    const dailyNeeded = daysLeft > 0 ? (remaining / daysLeft).toFixed(1) : remaining;
 
     // Active days count
     const loginDays = new Set(state.gamification.loginDays || []);
@@ -3229,12 +3230,21 @@ window.copyCodeSnippet = function (btn, text) {
     const hour = new Date().getHours();
 
     if (!todayPledge) {
+      let suggestedProblems = 1;
+      if (state.gamification.goalConfig) {
+        const goal = state.gamification.goalConfig;
+        const daysLeft = Math.max(0, daysBetween(today, goal.date));
+        const appProblems = state.problems.filter(p => !p.archived).length;
+        const remaining = Math.max(0, goal.target - (appProblems + (Number(goal.external) || 0)));
+        if (remaining > 0) suggestedProblems = daysLeft > 0 ? Math.ceil(remaining / daysLeft) : remaining;
+      }
+
       statusEl.textContent = '';
       statusEl.className = 'pledge-status';
       el.innerHTML = `
         <form id="pledgeForm" class="pledge-form">
           <label>Problems to solve
-            <input type="number" id="pledgeProblems" min="0" value="1" />
+            <input type="number" id="pledgeProblems" min="0" value="${suggestedProblems}" />
           </label>
           <label>Revisions to do
             <input type="number" id="pledgeRevisions" min="0" value="1" />
