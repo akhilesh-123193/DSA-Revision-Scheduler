@@ -2409,14 +2409,14 @@ window.copyCodeSnippet = function (btn, text) {
 
       bodyEl.innerHTML = `
         <div style="max-width:640px;margin:0 auto;">
-          <div id="feynmanPanel" style="margin-bottom:24px;background:#fff;border:2px solid #4f46e5;border-radius:12px;padding:20px;box-shadow:0 8px 24px rgba(79,70,229,0.12);">
+          <div id="feynmanPanel" style="margin-bottom:24px;background:rgba(255,255,255,0.9);border:1px solid var(--border);border-top:4px solid var(--gold);border-radius:12px;padding:24px;box-shadow:var(--shadow);">
             <div style="margin-bottom:16px;">
-              <h4 style="margin:0;font-size:1.1rem;color:var(--ink);">🗣️ Feynman Interview Simulator</h4>
-              <p style="margin:4px 0 0;font-size:0.8rem;color:var(--ink-60);">If you can't explain it simply, you don't understand it well enough. Type a 2-sentence elevator pitch of your approach before proceeding.</p>
+              <h4 style="margin:0;font-size:1.15rem;color:var(--ink);font-family:'Inter', sans-serif;">🗣️ Active Recall: Technical Pitch</h4>
+              <p style="margin:4px 0 0;font-size:0.85rem;color:var(--ink-60);">If you can't explain it simply, you don't understand it well enough. Type a 2-sentence elevator pitch of your approach before unlocking the solution.</p>
             </div>
-            <textarea id="feynmanInput" rows="3" style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);font-family:inherit;font-size:0.9rem;resize:vertical;margin-bottom:12px;" placeholder="E.g. I will use a sliding window to track the longest valid sequence, expanding the right pointer and shrinking the left when the sum exceeds K. Time is O(N) and space is O(1)."></textarea>
-            <div id="feynmanFeedback" style="display:none;margin-bottom:12px;padding:12px;border-radius:8px;background:rgba(79,70,229,0.05);border:1px solid #4f46e5;font-size:0.9rem;line-height:1.4;"></div>
-            <button type="button" class="btn primary" id="feynmanSubmitBtn" style="width:100%;background:#4f46e5;color:white;">Lock in Explanation & Proceed</button>
+            <textarea id="feynmanInput" rows="3" style="width:100%;padding:14px;border-radius:8px;border:1px solid var(--border);font-family:'Inter', sans-serif;font-size:0.95rem;resize:vertical;margin-bottom:16px;background:var(--cream-3);box-shadow:inset 0 1px 2px rgba(0,0,0,0.02);" placeholder="E.g. I will use a sliding window to track the longest valid sequence... Time is O(N) and space is O(1)."></textarea>
+            <div id="feynmanFeedback" style="display:none;margin-bottom:16px;padding:16px;border-radius:8px;background:rgba(181,137,0,0.05);border:1px dashed var(--gold);font-size:0.95rem;line-height:1.5;"></div>
+            <button type="button" class="btn primary" id="feynmanSubmitBtn" style="width:100%;background:var(--ink);color:var(--cream-3);padding:12px;font-size:1rem;font-weight:600;letter-spacing:0.5px;">Lock in Explanation & Proceed</button>
           </div>
 
           <div id="hiddenRevisionContent" style="display:none;">
@@ -2517,7 +2517,7 @@ Respond EXACTLY in this format, with no markdown formatting around the output, j
 SCORE: X/10
 FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they missed complexity.]`;
 
-              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -2530,7 +2530,7 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
               
               const text = data.candidates[0].content.parts[0].text;
               
-              fFeedback.innerHTML = `<strong style="color:var(--ink)">🤖 AI Interviewer Feedback:</strong><br/>${text.replace(/\n/g, '<br/>')}`;
+              fFeedback.innerHTML = `<strong style="color:var(--ink);font-family:'Inter', sans-serif;">🤖 AI Interviewer Feedback:</strong><br/>${text.replace(/\n/g, '<br/>')}`;
               fFeedback.style.display = "block";
               toast("Graded by AI!", "success");
             } catch (err) {
@@ -3490,11 +3490,20 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
       geminiInput.value = state.gamification.geminiKey;
     }
     
-    geminiInput.addEventListener('change', (e) => {
+    geminiInput.addEventListener('input', (e) => {
       if (!state.gamification) state.gamification = {};
       state.gamification.geminiKey = e.target.value.trim();
       if (typeof saveState === 'function') saveState();
-      toast('Gemini API Key saved!', 'success');
+    });
+    
+    geminiInput.addEventListener('blur', () => {
+       toast('Gemini API Key saved!', 'success');
+    });
+    
+    geminiInput.addEventListener('keydown', (e) => {
+       if (e.key === 'Enter') {
+           geminiInput.blur();
+       }
     });
   }
 })();
