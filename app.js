@@ -2118,10 +2118,13 @@ window.copyCodeSnippet = function (btn, text) {
     const diffClass = p.difficulty ? `diff-${p.difficulty.toLowerCase()}` : "diff-medium";
     metaEl.innerHTML = `
       ${p.topic ? `<span class="dm-badge topic">📂 ${escapeHTML(p.topic)}</span>` : ""}
+      ${p.pattern ? `<span class="dm-badge topic" style="background:#4f46e5;color:white">🧩 ${escapeHTML(p.pattern)}</span>` : ""}
       ${p.phase ? `<span class="dm-badge phase">${escapeHTML(p.phase)}</span>` : ""}
       ${p.difficulty ? `<span class="dm-badge ${diffClass}">${escapeHTML(p.difficulty)}</span>` : ""}
+      ${p.time ? `<span class="dm-badge phase" style="border-color:var(--ink-30)">⏱ ${escapeHTML(p.time)}</span>` : ""}
+      ${p.space ? `<span class="dm-badge phase" style="border-color:var(--ink-30)">💾 ${escapeHTML(p.space)}</span>` : ""}
       ${p.solveDate ? `<span class="dm-badge phase">🗓 Solved ${formatShortDate(p.solveDate)}</span>` : ""}
-      <span class="dm-badge phase">⏱ Interval ${p.interval || 1}d</span>
+      <span class="dm-badge phase">🔄 Interval ${p.interval || 1}d</span>
     `;
 
     // Stats Strip
@@ -3402,4 +3405,104 @@ window.copyCodeSnippet = function (btn, text) {
     }
   }
 
+})();
+
+/* ============================================================
+   FOCUS TIMER (POMODORO) LOGIC
+============================================================ */
+(function initFocusTimer() {
+  const widget = $('#focusTimerWidget');
+  const toggleBtn = $('#ftToggleBtn');
+  const display = $('#ftDisplay');
+  const startBtn = $('#ftStartBtn');
+  const pauseBtn = $('#ftPauseBtn');
+  const resetBtn = $('#ftResetBtn');
+  const modes = document.querySelectorAll('.ft-mode');
+  
+  if (!widget) return;
+
+  let timerInterval = null;
+  let timeLeft = 25 * 60; // default 25m
+  let isRunning = false;
+  let currentMode = 25;
+
+  function updateDisplay() {
+    const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+    const s = (timeLeft % 60).toString().padStart(2, '0');
+    display.textContent = `${m}:${s}`;
+    
+    if (isRunning) {
+        document.title = `(${m}:${s}) Focus - DSA Gazette`;
+    } else {
+        document.title = `Akhilesh Daily Revision Gazette`;
+    }
+  }
+
+  function setMode(minutes) {
+    currentMode = minutes;
+    timeLeft = minutes * 60;
+    isRunning = false;
+    clearInterval(timerInterval);
+    display.className = 'ft-display' + (minutes === 5 ? ' break' : '');
+    updateDisplay();
+    
+    modes.forEach(btn => {
+      if (parseInt(btn.dataset.time) === minutes) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+  }
+
+  function tick() {
+    if (timeLeft > 0) {
+      timeLeft--;
+      updateDisplay();
+    } else {
+      clearInterval(timerInterval);
+      isRunning = false;
+      display.classList.remove('running');
+      toast(currentMode === 5 ? 'Break is over. Back to deep work!' : 'Focus session complete. Great job!', 'success');
+      // Auto-award coins for focus? 
+      if (currentMode !== 5) {
+         if (window.state && window.state.gamification) {
+             window.state.gamification.coins += 5;
+             window.state.gamification.ledger = window.state.gamification.ledger || [];
+             window.state.gamification.ledger.unshift({ date: new Date().toISOString(), reason: `${currentMode}m Deep Focus`, amount: 5 });
+             if (window.saveState) window.saveState();
+             if (window.renderAll) window.renderAll();
+         }
+      }
+      setMode(currentMode === 25 || currentMode === 45 ? 5 : 25);
+    }
+  }
+
+  startBtn.addEventListener('click', () => {
+    if (!isRunning && timeLeft > 0) {
+      isRunning = true;
+      display.classList.add('running');
+      timerInterval = setInterval(tick, 1000);
+    }
+  });
+
+  pauseBtn.addEventListener('click', () => {
+    isRunning = false;
+    display.classList.remove('running');
+    clearInterval(timerInterval);
+    updateDisplay();
+  });
+
+  resetBtn.addEventListener('click', () => {
+    setMode(currentMode);
+  });
+
+  modes.forEach(btn => {
+    btn.addEventListener('click', () => setMode(parseInt(btn.dataset.time)));
+  });
+
+  toggleBtn.addEventListener('click', () => {
+    widget.classList.toggle('collapsed');
+    toggleBtn.textContent = widget.classList.contains('collapsed') ? '△' : '_';
+  });
+
+  // Initialize
+  setMode(25);
 })();
