@@ -69,12 +69,6 @@ window.copyCodeSnippet = function (btn, text) {
 
   // ── Consistency & Accountability Engine ──
   const INACTIVITY_TAX = 15;
-  const DECAY_KEY = 'az.decayAppliedDays';
-  const GOAL_KEY = 'az.goalConfig';
-  const PLEDGE_KEY = 'az.pledges';
-  let decayAppliedDays = safeJSONParse(localStorage.getItem(DECAY_KEY), []);
-  let goalConfig = safeJSONParse(localStorage.getItem(GOAL_KEY), null);
-  let pledges = safeJSONParse(localStorage.getItem(PLEDGE_KEY), {});
 
 
   // Focus timer state
@@ -262,6 +256,9 @@ window.copyCodeSnippet = function (btn, text) {
     app.gamification.streakFreezes = Number.isFinite(app.gamification.streakFreezes) ? app.gamification.streakFreezes : STREAK_FREEZE_MAX;
     app.gamification.freezeUsedDays = Array.isArray(app.gamification.freezeUsedDays) ? app.gamification.freezeUsedDays : [];
     app.gamification.lastFreezeRefill = app.gamification.lastFreezeRefill || todayISO().slice(0, 7);
+    app.gamification.decayAppliedDays = Array.isArray(app.gamification.decayAppliedDays) ? app.gamification.decayAppliedDays : (safeJSONParse(localStorage.getItem('az.decayAppliedDays'), []) || []);
+    app.gamification.goalConfig = app.gamification.goalConfig !== undefined ? app.gamification.goalConfig : safeJSONParse(localStorage.getItem('az.goalConfig'), null);
+    app.gamification.pledges = app.gamification.pledges || safeJSONParse(localStorage.getItem('az.pledges'), {});
 
     app.problems = app.problems.map(p => normalizeProblem(p));
 
@@ -2841,7 +2838,7 @@ window.copyCodeSnippet = function (btn, text) {
       badge.className = "sync-badge syncing";
     }
     try {
-      const res = await fetch("/api/data");
+      const res = await fetch("/api/data?t=" + Date.now());
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.appData && Array.isArray(json.appData.problems)) {
@@ -3016,7 +3013,7 @@ window.copyCodeSnippet = function (btn, text) {
     // Check all days from 30 days ago to yesterday
     for (let i = 1; i <= 30; i++) {
       const day = addDaysISO(today, -i);
-      if (decayAppliedDays.includes(day)) continue;
+      if (state.gamification.decayAppliedDays.includes(day)) continue;
       if (loginDays.has(day) || frozen.has(day)) continue;
 
       // This day was missed — apply decay
@@ -3035,12 +3032,11 @@ window.copyCodeSnippet = function (btn, text) {
         createdAt: new Date().toISOString(),
         date: day
       });
-      decayAppliedDays.push(day);
+      state.gamification.decayAppliedDays.push(day);
       changed = true;
     }
 
     if (changed) {
-      localStorage.setItem(DECAY_KEY, JSON.stringify(decayAppliedDays));
       syncCoins();
       saveState();
     }
@@ -3127,11 +3123,11 @@ window.copyCodeSnippet = function (btn, text) {
   function openGoalDialog() {
     const dialog = $('#goalDialog');
     if (!dialog) return;
-    if (goalConfig) {
-      $('#goalName').value = goalConfig.name || '';
-      $('#goalDate').value = goalConfig.date || '';
-      $('#goalTarget').value = goalConfig.target || '';
-      $('#goalExternal').value = goalConfig.external || 0;
+    if (state.gamification.goalConfig) {
+      $('#goalName').value = state.gamification.goalConfig.name || '';
+      $('#goalDate').value = state.gamification.goalConfig.date || '';
+      $('#goalTarget').value = state.gamification.goalConfig.target || '';
+      $('#goalExternal').value = state.gamification.goalConfig.external || 0;
     } else {
       $('#goalName').value = '';
       $('#goalDate').value = '';
@@ -3143,22 +3139,22 @@ window.copyCodeSnippet = function (btn, text) {
 
   function saveGoal(e) {
     e.preventDefault();
-    goalConfig = {
+    state.gamification.goalConfig = {
       name: $('#goalName').value.trim(),
       date: $('#goalDate').value,
       target: Number($('#goalTarget').value) || 100,
       external: Number($('#goalExternal').value) || 0,
-      createdAt: goalConfig?.createdAt || todayISO()
+      createdAt: state.gamification.goalConfig?.createdAt || todayISO()
     };
-    localStorage.setItem(GOAL_KEY, JSON.stringify(goalConfig));
+    saveState();
     $('#goalDialog')?.close();
     renderWarRoom();
     toast('Mission set. The countdown begins.');
   }
 
   function clearGoal() {
-    goalConfig = null;
-    localStorage.removeItem(GOAL_KEY);
+    state.gamification.goalConfig = null;
+    saveState();
     $('#goalDialog')?.close();
     renderWarRoom();
     toast('Mission cleared.');
@@ -3169,7 +3165,7 @@ window.copyCodeSnippet = function (btn, text) {
     const titleEl = $('#warRoomTitle');
     if (!el) return;
 
-    if (!goalConfig) {
+    if (!state.gamification.goalConfig) {
       titleEl.textContent = 'Set Your Mission';
       el.innerHTML = `<div class="war-room-empty">
         <p>No mission set. Define a goal to activate the countdown.</p>
@@ -3179,24 +3175,24 @@ window.copyCodeSnippet = function (btn, text) {
       return;
     }
 
-    titleEl.textContent = goalConfig.name;
+    titleEl.textContent = state.gamification.goalConfig.name;
     const today = todayISO();
-    const daysLeft = Math.max(0, daysBetween(today, goalConfig.date));
-    const totalDays = Math.max(1, daysBetween(goalConfig.createdAt, goalConfig.date));
+    const daysLeft = Math.max(0, daysBetween(today, state.gamification.goalConfig.date));
+    const totalDays = Math.max(1, daysBetween(state.gamification.goalConfig.createdAt, state.gamification.goalConfig.date));
     const elapsed = totalDays - daysLeft;
     const pct = Math.min(100, Math.round((elapsed / totalDays) * 100));
 
-    const externalProgress = Number(goalConfig.external) || 0;
+    const externalProgress = Number(state.gamification.goalConfig.external) || 0;
     const appProblems = state.problems.filter(p => !p.archived).length;
     const totalProblems = appProblems + externalProgress;
-    const remaining = Math.max(0, goalConfig.target - totalProblems);
+    const remaining = Math.max(0, state.gamification.goalConfig.target - totalProblems);
     const dailyNeeded = daysLeft > 0 ? Math.ceil(remaining / daysLeft) : remaining;
 
     // Active days count
     const loginDays = new Set(state.gamification.loginDays || []);
     let activeDays = 0;
     for (let i = 0; i < elapsed; i++) {
-      const d = addDaysISO(goalConfig.createdAt, i);
+      const d = addDaysISO(state.gamification.goalConfig.createdAt, i);
       if (loginDays.has(d)) activeDays++;
     }
 
@@ -3225,7 +3221,7 @@ window.copyCodeSnippet = function (btn, text) {
     if (!el) return;
 
     const today = todayISO();
-    const todayPledge = pledges[today];
+    const todayPledge = state.gamification.pledges[today];
     const m = metricsForDate(today);
     const hour = new Date().getHours();
 
@@ -3251,13 +3247,13 @@ window.copyCodeSnippet = function (btn, text) {
       `;
       $('#pledgeForm')?.addEventListener('submit', (e) => {
         e.preventDefault();
-        pledges[today] = {
+        state.gamification.pledges[today] = {
           problems: Number($('#pledgeProblems').value) || 0,
           revisions: Number($('#pledgeRevisions').value) || 0,
           tasks: Number($('#pledgeTasks').value) || 0,
           createdAt: new Date().toISOString()
         };
-        localStorage.setItem(PLEDGE_KEY, JSON.stringify(pledges));
+        saveState();
         renderPledge();
         toast('Pledge locked in. Now prove it.');
         playTick();

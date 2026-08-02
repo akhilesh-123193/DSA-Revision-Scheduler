@@ -158,6 +158,9 @@ app.get('/api/health', async (req, res) => {
 
 // GET /api/data - Load full application state
 app.get('/api/data', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   const db = await getDatabase();
   res.json({
     success: true,
