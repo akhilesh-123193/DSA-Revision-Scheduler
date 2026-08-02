@@ -2535,10 +2535,18 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
               toast("Graded by AI!", "success");
             } catch (err) {
               console.error(err);
-              toast("AI Grading failed. Proceeding manually.", "warn");
+              fFeedback.innerHTML = `<strong style="color:var(--red);font-family:'Inter', sans-serif;">🚨 API Error:</strong><br/>${err.message}<br/><span style="font-size:0.8rem;color:var(--ink-60)">Check if your AdBlocker/Brave Shields are blocking the request, or if the API key is completely valid.</span>`;
+              fFeedback.style.display = "block";
+              fFeedback.style.borderColor = "var(--red)";
+              fFeedback.style.background = "rgba(156,47,42,0.05)";
+              toast("AI Grading failed. See error.", "warn");
             }
           } else {
-             toast("Explanation locked! (Add a Gemini API key in settings for AI grading).", "success");
+             fFeedback.innerHTML = `<strong style="color:var(--red);">🚨 No API Key Found!</strong><br/>Please paste your key in the Reward Vault settings tab and hit Enter.`;
+             fFeedback.style.display = "block";
+             fFeedback.style.borderColor = "var(--red)";
+             fFeedback.style.background = "rgba(156,47,42,0.05)";
+             toast("Explanation locked manually (No key found).", "success");
           }
           
           $("#feynmanPanel").style.opacity = "0.8";
