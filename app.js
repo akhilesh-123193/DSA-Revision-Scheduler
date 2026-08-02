@@ -3266,7 +3266,7 @@ window.copyCodeSnippet = function (btn, text) {
       const pRevised = m.revisions >= todayPledge.revisions;
       const pTasks = m.tasks >= todayPledge.tasks;
       const allMet = pSolved && pRevised && pTasks;
-      const anyMet = pSolved || pRevised || pTasks;
+      const metCount = [pSolved, pRevised, pTasks].filter(Boolean).length;
 
       if (allMet) {
         statusEl.textContent = '✓ PLEDGE KEPT';
@@ -3275,30 +3275,41 @@ window.copyCodeSnippet = function (btn, text) {
         statusEl.textContent = '✕ PLEDGE BROKEN';
         statusEl.className = 'pledge-status broken';
       } else {
-        statusEl.textContent = 'IN PROGRESS';
+        statusEl.textContent = `${metCount}/3 IN PROGRESS`;
         statusEl.className = 'pledge-status pending';
       }
+
+      const pBar = (val, target, color) => {
+        const pct = target > 0 ? Math.min(100, Math.round((val / target) * 100)) : 100;
+        return `<div style="margin-top:10px;height:4px;background:rgba(28,21,16,0.06);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 0.8s cubic-bezier(.4,0,.15,1);"></div>
+        </div>`;
+      };
 
       el.innerHTML = `
         <div class="pledge-recap">
           <div class="pledge-metric">
             <span class="pm-num ${pSolved ? 'pm-achieved' : 'pm-behind'}">${m.solved}</span>
-            <span class="pm-lbl">${pSolved ? '✓' : '✕'} problems</span>
-            <span class="pm-target">pledged ${todayPledge.problems}</span>
+            <span class="pm-lbl">${pSolved ? '✓' : '○'} problems</span>
+            <span class="pm-target">goal: ${todayPledge.problems}</span>
+            ${pBar(m.solved, todayPledge.problems, pSolved ? 'var(--green)' : 'var(--red)')}
           </div>
           <div class="pledge-metric">
             <span class="pm-num ${pRevised ? 'pm-achieved' : 'pm-behind'}">${m.revisions}</span>
-            <span class="pm-lbl">${pRevised ? '✓' : '✕'} revisions</span>
-            <span class="pm-target">pledged ${todayPledge.revisions}</span>
+            <span class="pm-lbl">${pRevised ? '✓' : '○'} revisions</span>
+            <span class="pm-target">goal: ${todayPledge.revisions}</span>
+            ${pBar(m.revisions, todayPledge.revisions, pRevised ? 'var(--green)' : 'var(--red)')}
           </div>
           <div class="pledge-metric">
             <span class="pm-num ${pTasks ? 'pm-achieved' : 'pm-behind'}">${m.tasks}</span>
-            <span class="pm-lbl">${pTasks ? '✓' : '✕'} tasks</span>
-            <span class="pm-target">pledged ${todayPledge.tasks}</span>
+            <span class="pm-lbl">${pTasks ? '✓' : '○'} tasks</span>
+            <span class="pm-target">goal: ${todayPledge.tasks}</span>
+            ${pBar(m.tasks, todayPledge.tasks, pTasks ? 'var(--green)' : 'var(--red)')}
           </div>
         </div>
-        ${!allMet && hour < 22 ? '<p style="font-size:.78rem;color:var(--red);margin-top:12px;font-family:ui-sans-serif,system-ui;font-weight:600">You gave your word. Keep it.</p>' : ''}
-        ${allMet ? '<p style="font-size:.78rem;color:var(--green);margin-top:12px;font-family:ui-sans-serif,system-ui;font-weight:600">✓ Pledge fulfilled. You kept your word today.</p>' : ''}
+        ${allMet ? '<p style="font-size:.82rem;color:var(--green);margin-top:14px;font-family:ui-sans-serif,system-ui;font-weight:700;text-align:center">✓ Pledge fulfilled. You kept your word today.</p>' : ''}
+        ${!allMet && hour < 22 ? `<p style="font-size:.82rem;color:var(--ink-60);margin-top:14px;font-family:ui-sans-serif,system-ui;font-weight:600;text-align:center">${metCount === 0 ? 'You gave your word. Keep it.' : metCount === 1 ? 'Progress started. Keep pushing.' : 'Almost there. Finish strong.'}</p>` : ''}
+        ${!allMet && hour >= 22 ? '<p style="font-size:.82rem;color:var(--red);margin-top:14px;font-family:ui-sans-serif,system-ui;font-weight:700;text-align:center">Tomorrow is a new chance. Don\'t let it slip again.</p>' : ''}
       `;
     }
   }
