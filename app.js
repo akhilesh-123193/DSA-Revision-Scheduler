@@ -296,6 +296,8 @@ window.copyCodeSnippet = function (btn, text) {
       history: Array.isArray(p.history) ? p.history.filter(isValidISO) : [],
       revisionMistakes: Array.isArray(p.revisionMistakes) ? p.revisionMistakes : [],
       cfftd: p.cfftd || { c: '', f1: '', t: '', d: '', notes: '' },
+      code: typeof p.code === 'string' ? p.code : '',
+      codeLang: typeof p.codeLang === 'string' ? p.codeLang : 'cpp',
       createdAt: p.createdAt || new Date().toISOString(),
       archived: Boolean(p.archived)
     };
@@ -611,9 +613,12 @@ window.copyCodeSnippet = function (btn, text) {
 
     if (!problems.length) return table.append(emptyState('No matching problems in the archive.'));
     problems.forEach(p => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'problem-entry-wrap';
       const row = document.createElement('div');
       row.className = 'problem-row';
       const overdue = p.nextRevDate < todayISO();
+      const hasCode = !!(p.code && p.code.trim());
       row.innerHTML = `
         <div class="problem-title" data-label="Problem">${p.url ? `<a href="${escapeAttr(p.url)}" target="_blank" rel="noopener">${escapeHTML(p.name)}</a>` : escapeHTML(p.name)}</div>
         <div data-label="Topic">${escapeHTML(p.topic)}</div>
@@ -626,6 +631,7 @@ window.copyCodeSnippet = function (btn, text) {
           <button class="btn ghost small" data-edit-link="${p.id}">Link</button>
           <button class="btn ghost small" data-edit-problem="${p.id}">Edit</button>
           <button class="btn ghost small" data-deep-dive="${p.id}">Deep Dive</button>
+          ${hasCode ? `<button class="btn ghost small code-toggle-btn" data-toggle-code="${p.id}"><span class="code-toggle-icon">▶</span> Code</button>` : ''}
           <button class="btn danger small" data-delete-problem="${p.id}">Delete</button>
         </div>
       `;
@@ -635,7 +641,54 @@ window.copyCodeSnippet = function (btn, text) {
       $('[data-edit-problem]', row).addEventListener('click', () => openProblemDialog(p.id));
       $('[data-deep-dive]', row).addEventListener('click', () => openDetailModal(p.id));
       $('[data-delete-problem]', row).addEventListener('click', () => deleteProblem(p.id));
-      table.append(row);
+      wrapper.append(row);
+
+      // Code panel (hidden by default)
+      if (hasCode) {
+        const codePanel = document.createElement('div');
+        codePanel.className = 'problem-code-panel collapsed';
+        codePanel.id = `code-panel-${p.id}`;
+        const lang = p.codeLang || 'cpp';
+        const langLabel = lang ? lang.toUpperCase() : 'CODE';
+        const escapedCode = escapeHTML(p.code);
+        const highlighted = highlightCodeSyntax(escapedCode, lang);
+        codePanel.innerHTML = `
+          <div class="problem-code-header">
+            <div class="problem-code-dots"><i></i><i></i><i></i></div>
+            <span class="problem-code-lang">${escapeHTML(langLabel)}</span>
+            <span class="problem-code-filename">${escapeHTML(p.name)}</span>
+            <button class="problem-code-copy-btn" type="button" data-copy-code="${p.id}">📋 Copy</button>
+          </div>
+          <div class="problem-code-body">
+            <div class="problem-code-lines">${generateLineNumbers(p.code)}</div>
+            <pre class="problem-code-pre"><code>${highlighted}</code></pre>
+          </div>
+        `;
+        $('[data-copy-code]', codePanel)?.addEventListener('click', (e) => {
+          navigator.clipboard.writeText(p.code).then(() => {
+            const btn = e.target;
+            btn.textContent = '✓ Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
+          });
+        });
+        wrapper.append(codePanel);
+
+        $('[data-toggle-code]', row)?.addEventListener('click', () => {
+          const panel = $(`#code-panel-${p.id}`);
+          const btn = $(`[data-toggle-code="${p.id}"]`);
+          if (panel) {
+            const isCollapsed = panel.classList.contains('collapsed');
+            panel.classList.toggle('collapsed');
+            if (btn) {
+              const icon = $('.code-toggle-icon', btn);
+              if (icon) icon.textContent = isCollapsed ? '▼' : '▶';
+            }
+          }
+        });
+      }
+
+      table.append(wrapper);
     });
   }
 
@@ -1236,6 +1289,8 @@ window.copyCodeSnippet = function (btn, text) {
       $('#pSolveDate').value = p.solveDate;
       $('#pNextRevDate').value = p.nextRevDate;
       $('#pNotes').value = p.cfftd?.notes || '';
+      $('#pCode').value = p.code || '';
+      $('#pCodeLang').value = p.codeLang || 'cpp';
     } else {
       titleEl.textContent = 'Add Problem';
       submitBtn.textContent = 'Publish Problem +15';
@@ -1244,6 +1299,8 @@ window.copyCodeSnippet = function (btn, text) {
       $('#pPhase').value = 'Phase 2';
       $('#pSolveDate').value = todayISO();
       $('#pNextRevDate').value = addDaysISO(todayISO(), 1);
+      $('#pCode').value = '';
+      $('#pCodeLang').value = 'cpp';
     }
     dlg.showModal();
     setTimeout(() => $('#pName').focus(), 30);
@@ -1278,6 +1335,8 @@ window.copyCodeSnippet = function (btn, text) {
       p.interval = interval;
       p.cfftd = p.cfftd || { c: '', f1: '', t: '', d: '', notes: '' };
       p.cfftd.notes = $('#pNotes').value.trim();
+      p.code = $('#pCode').value;
+      p.codeLang = $('#pCodeLang').value || 'cpp';
       $('#problemDialog').close();
       saveState();
       renderAll();
@@ -1297,6 +1356,8 @@ window.copyCodeSnippet = function (btn, text) {
         history: [],
         revisionMistakes: [],
         cfftd: { c: '', f1: '', t: '', d: '', notes: $('#pNotes').value.trim() },
+        code: $('#pCode').value,
+        codeLang: $('#pCodeLang').value || 'cpp',
         createdAt: new Date().toISOString(),
         archived: false
       };
@@ -2217,8 +2278,32 @@ window.copyCodeSnippet = function (btn, text) {
         </div>`;
       }
 
-      if (!cfftdFields.length && !hasFreeNotes) {
-        html = `<div class="empty-state">No notes added for this problem yet. Click "Stamp Revision" or edit problem to add notes.</div>`;
+      // Solution code section in deep dive
+      const hasCode = !!(p.code && p.code.trim());
+      if (hasCode) {
+        const lang = p.codeLang || 'cpp';
+        const langLabel = lang ? lang.toUpperCase() : 'CODE';
+        const escapedCode = escapeHTML(p.code);
+        const highlighted = highlightCodeSyntax(escapedCode, lang);
+        html += `<div class="dm-code-section">
+          <div class="dm-section-title">💻 Solution Code</div>
+          <div class="problem-code-panel">
+            <div class="problem-code-header">
+              <div class="problem-code-dots"><i></i><i></i><i></i></div>
+              <span class="problem-code-lang">${escapeHTML(langLabel)}</span>
+              <span class="problem-code-filename">${escapeHTML(p.name)}</span>
+              <button class="problem-code-copy-btn" type="button" onclick="copyCodeSnippet(this, \`${escapeAttr(p.code)}\`)">📋 Copy</button>
+            </div>
+            <div class="problem-code-body">
+              <div class="problem-code-lines">${generateLineNumbers(p.code)}</div>
+              <pre class="problem-code-pre"><code>${highlighted}</code></pre>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      if (!cfftdFields.length && !hasFreeNotes && !hasCode) {
+        html = `<div class="empty-state">No notes or code added for this problem yet. Click "Stamp Revision" or edit problem to add notes.</div>`;
       }
 
       bodyEl.innerHTML = html;
@@ -2773,6 +2858,12 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
   }
 
   function escapeAttr(str) { return escapeHTML(str).replace(/`/g, '&#96;'); }
+
+
+  function generateLineNumbers(code) {
+    const lines = String(code ?? '').split('\n');
+    return lines.map((_, i) => `<span>${i + 1}</span>`).join('');
+  }
 
   /* ============================================================
      RICH NOTES RENDERER

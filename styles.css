@@ -2627,3 +2627,261 @@ body.ready { opacity:1; }
 .dm-stat-badge strong {
   color: var(--ink);
 }
+
+/* ================================================================
+   SOLUTION CODE — Input Field in Problem Dialog
+================================================================ */
+.code-input-wrap {
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1c1917;
+  transition: border-color var(--fast), box-shadow var(--fast);
+}
+.code-input-wrap:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(196,154,39,.18);
+}
+.code-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #262220;
+  border-bottom: 1px solid rgba(255,245,220,.08);
+}
+.code-lang-select {
+  width: auto;
+  max-width: 120px;
+  background: #1c1917;
+  color: rgba(255,245,220,.7);
+  border: 1px solid rgba(255,245,220,.12);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: .72rem;
+  font-weight: 700;
+  font-family: ui-sans-serif, system-ui;
+  letter-spacing: .04em;
+}
+.code-input-hint {
+  font-size: .7rem;
+  color: rgba(255,245,220,.3);
+  font-family: ui-sans-serif, system-ui;
+  font-weight: 600;
+}
+.code-textarea {
+  background: #1c1917 !important;
+  color: #e8e0d4 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace !important;
+  font-size: .82rem;
+  line-height: 1.65;
+  padding: 14px 16px;
+  min-height: 160px;
+  resize: vertical;
+  tab-size: 4;
+}
+.code-textarea::placeholder {
+  color: rgba(255,245,220,.2);
+}
+.code-textarea:focus {
+  box-shadow: none !important;
+}
+
+/* ================================================================
+   SOLUTION CODE — Problem Log Inline Code Panel
+================================================================ */
+.problem-entry-wrap {
+  display: grid;
+  gap: 0;
+}
+.problem-code-panel {
+  background: #1a1714;
+  border: 1.5px solid rgba(196,154,39,.15);
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.3s ease,
+              margin 0.3s ease;
+  max-height: 600px;
+  opacity: 1;
+  margin-bottom: 2px;
+}
+.problem-code-panel.collapsed {
+  max-height: 0;
+  opacity: 0;
+  border-width: 0;
+  margin-bottom: 0;
+}
+.problem-entry-wrap .problem-row {
+  border-radius: var(--radius);
+  transition: border-radius 0.2s ease, all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.problem-entry-wrap:has(.problem-code-panel:not(.collapsed)) .problem-row {
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom-color: transparent;
+}
+
+/* Code panel header — macOS terminal bar */
+.problem-code-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #262220;
+  border-bottom: 1px solid rgba(255,245,220,.06);
+}
+.problem-code-dots {
+  display: flex;
+  gap: 6px;
+}
+.problem-code-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: block;
+}
+.problem-code-dots i:nth-child(1) { background: #ff5f57; }
+.problem-code-dots i:nth-child(2) { background: #ffbd2e; }
+.problem-code-dots i:nth-child(3) { background: #28c840; }
+.problem-code-lang {
+  font-family: ui-sans-serif, system-ui;
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: rgba(255,245,220,.4);
+  text-transform: uppercase;
+  padding: 2px 8px;
+  background: rgba(255,245,220,.06);
+  border-radius: 4px;
+}
+.problem-code-filename {
+  font-family: ui-sans-serif, system-ui;
+  font-size: .72rem;
+  font-weight: 600;
+  color: rgba(255,245,220,.25);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.problem-code-copy-btn {
+  background: rgba(255,245,220,.06);
+  border: 1px solid rgba(255,245,220,.1);
+  color: rgba(255,245,220,.55);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-family: ui-sans-serif, system-ui;
+  font-size: .72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.problem-code-copy-btn:hover {
+  background: rgba(255,245,220,.12);
+  color: rgba(255,245,220,.8);
+  transform: none;
+  box-shadow: none;
+}
+.problem-code-copy-btn.copied {
+  background: rgba(40,113,79,.3);
+  color: #4aad78;
+  border-color: rgba(40,113,79,.4);
+}
+
+/* Code body — line numbers + code */
+.problem-code-body {
+  display: flex;
+  max-height: 500px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,245,220,.12) transparent;
+}
+.problem-code-body::-webkit-scrollbar { width: 6px; }
+.problem-code-body::-webkit-scrollbar-track { background: transparent; }
+.problem-code-body::-webkit-scrollbar-thumb { background: rgba(255,245,220,.15); border-radius: 3px; }
+.problem-code-lines {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 0;
+  background: rgba(255,245,220,.03);
+  border-right: 1px solid rgba(255,245,220,.06);
+  user-select: none;
+  min-width: 42px;
+  flex-shrink: 0;
+}
+.problem-code-lines span {
+  display: block;
+  padding: 0 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .78rem;
+  line-height: 1.65;
+  color: rgba(255,245,220,.2);
+  text-align: right;
+}
+.problem-code-pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  flex: 1;
+  background: transparent;
+}
+.problem-code-pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: .78rem;
+  line-height: 1.65;
+  color: #e8e0d4;
+  tab-size: 4;
+  white-space: pre;
+}
+
+/* Code toggle button */
+.code-toggle-btn {
+  background: rgba(196,154,39,.08) !important;
+  border-color: rgba(196,154,39,.2) !important;
+  color: #8a6b10 !important;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+.code-toggle-btn:hover {
+  background: rgba(196,154,39,.15) !important;
+  border-color: rgba(196,154,39,.35) !important;
+}
+.code-toggle-icon {
+  font-size: .6rem;
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+/* ================================================================
+   SOLUTION CODE — Deep Dive Modal Code Section
+================================================================ */
+.dm-code-section {
+  margin-top: 24px;
+}
+.dm-code-section .problem-code-panel {
+  border: 1.5px solid rgba(196,154,39,.15);
+  border-radius: 16px;
+  margin-top: 12px;
+}
+.dm-code-section .problem-code-header {
+  border-radius: 14px 14px 0 0;
+}
+.dm-code-section .problem-code-body {
+  max-height: 600px;
+}
+
+/* Responsive adjustments for code panels */
+@media (max-width: 860px) {
+  .problem-code-lines { min-width: 36px; }
+  .problem-code-lines span { padding: 0 8px; font-size: .72rem; }
+  .problem-code-pre { padding: 14px 12px; }
+  .problem-code-pre code { font-size: .74rem; }
+}
+@media (max-width: 540px) {
+  .problem-code-lines { display: none; }
+  .problem-code-body { max-height: 400px; }
+}
