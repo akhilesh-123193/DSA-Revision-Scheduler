@@ -567,32 +567,70 @@ window.copyCodeSnippet = function (btn, text) {
          return (pVals[a.priority || 'normal'] || 1) - (pVals[b.priority || 'normal'] || 1);
       });
 
-    if (!todayTasks.length) return el.append(emptyState("Fresh day, clean desk. Add today's tasks below."));
-    todayTasks.forEach(t => {
-      const row = document.createElement('div');
-      row.className = `item-card task-row ${t.done ? 'done' : ''}`;
-      let pBadge = '';
-      if (t.priority === 'high') pBadge = '<span class="task-priority high">🔴 High</span>';
-      else if (t.priority === 'low') pBadge = '<span class="task-priority low">🟢 Low</span>';
-      row.innerHTML = `
-        <button class="check" data-toggle-task="${t.id}" title="Toggle task" aria-label="${t.done ? 'Mark task incomplete' : 'Mark task complete'}">${t.done ? '✓' : ''}</button>
-        <div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <h4 style="margin:0">${escapeHTML(t.title)}</h4>
-            ${pBadge}
-          </div>
-          <div class="meta" style="margin-top:6px;"><span>Today</span>${t.completedAt ? `<span>Completed ${formatShortDate(t.completedAt)}</span>` : ''}</div>
+    if (!todayTasks.length) {
+      el.append(emptyState("Fresh day, clean desk. Add today's tasks below."));
+    } else {
+      todayTasks.forEach(t => renderTaskRow(t, el));
+    }
+
+    // Render upcoming tasks
+    let upcomingContainer = $('#upcomingTasksContainer');
+    if (!upcomingContainer) {
+      upcomingContainer = document.createElement('div');
+      upcomingContainer.id = 'upcomingTasksContainer';
+      el.parentNode.insertBefore(upcomingContainer, el.nextSibling);
+    }
+    
+    const upcomingTasks = state.todos
+      .filter(t => t.date > today)
+      .sort((a, b) => {
+         if (a.date !== b.date) return a.date.localeCompare(b.date);
+         const pVals = { 'high': 0, 'normal': 1, 'low': 2 };
+         return (pVals[a.priority || 'normal'] || 1) - (pVals[b.priority || 'normal'] || 1);
+      });
+
+    if (upcomingTasks.length > 0) {
+      upcomingContainer.innerHTML = `
+        <div class="section-head" style="margin-top:32px; margin-bottom:16px;">
+          <div><p class="kicker">Looking Ahead</p><h2 style="font-size:1.2rem">Upcoming Tasks</h2></div>
         </div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
-          <button class="btn ghost small" data-edit-task="${t.id}" aria-label="Edit task">Edit</button>
-          <button class="btn ghost small" data-delete-task="${t.id}" aria-label="Delete task">Delete</button>
-        </div>
+        <div id="upcomingTodoList" class="task-list"></div>
       `;
-      $('[data-toggle-task]', row).addEventListener('click', () => toggleTask(t.id));
-      $('[data-delete-task]', row).addEventListener('click', () => deleteTask(t.id));
-      $('[data-edit-task]', row).addEventListener('click', () => openEditTaskDialog(t.id));
-      el.append(row);
-    });
+      const upcomingList = $('#upcomingTodoList', upcomingContainer) || $('#upcomingTodoList');
+      upcomingTasks.forEach(t => renderTaskRow(t, upcomingList));
+      upcomingContainer.style.display = 'block';
+    } else {
+      upcomingContainer.style.display = 'none';
+    }
+  }
+
+  function renderTaskRow(t, container) {
+    const row = document.createElement('div');
+    row.className = `item-card task-row ${t.done ? 'done' : ''}`;
+    let pBadge = '';
+    if (t.priority === 'high') pBadge = '<span class="task-priority high">🔴 High</span>';
+    else if (t.priority === 'low') pBadge = '<span class="task-priority low">🟢 Low</span>';
+    
+    let dateLabel = t.date === todayISO() ? 'Today' : formatShortDate(t.date);
+    
+    row.innerHTML = `
+      <button class="check" data-toggle-task="${t.id}" title="Toggle task" aria-label="${t.done ? 'Mark task incomplete' : 'Mark task complete'}">${t.done ? '✓' : ''}</button>
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h4 style="margin:0">${escapeHTML(t.title)}</h4>
+          ${pBadge}
+        </div>
+        <div class="meta" style="margin-top:6px;"><span>${dateLabel}</span>${t.completedAt ? `<span>Completed ${formatShortDate(t.completedAt)}</span>` : ''}</div>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+        <button class="btn ghost small" data-edit-task="${t.id}" aria-label="Edit task">Edit</button>
+        <button class="btn ghost small" data-delete-task="${t.id}" aria-label="Delete task">Delete</button>
+      </div>
+    `;
+    $('[data-toggle-task]', row).addEventListener('click', () => toggleTask(t.id));
+    $('[data-delete-task]', row).addEventListener('click', () => deleteTask(t.id));
+    $('[data-edit-task]', row).addEventListener('click', () => openEditTaskDialog(t.id));
+    container.append(row);
   }
 
   function renderFilters() {
@@ -769,6 +807,14 @@ window.copyCodeSnippet = function (btn, text) {
       ['Tasks completed', m.tasks, tasksForDate(selectedDate).filter(t => t.done && t.completedAt === selectedDate).map(t => t.title)],
       ['Check-in', m.checkin, state.gamification.loginDays.includes(selectedDate) ? ['Daily flame recorded'] : []]
     ];
+    
+    // Add planned tasks if selectedDate is in the future or today
+    if (selectedDate >= todayISO()) {
+      const plannedTasks = state.todos.filter(t => t.date === selectedDate && !t.done).map(t => t.title);
+      if (plannedTasks.length > 0) {
+        cards.push(['Planned tasks', plannedTasks.length, plannedTasks]);
+      }
+    }
     cards.forEach(([title, count, names]) => {
       const div = document.createElement('div');
       div.className = 'item-card';
