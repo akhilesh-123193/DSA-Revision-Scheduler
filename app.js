@@ -124,6 +124,8 @@ window.copyCodeSnippet = function (btn, text) {
     $('#exportBtn').addEventListener('click', exportBackup);
     $('#checkinBtn').addEventListener('click', toggleCheckin);
     $('#todoForm').addEventListener('submit', addTodo);
+    $('#editTaskForm')?.addEventListener('submit', saveEditTask);
+    $('#editTaskCancelBtn')?.addEventListener('click', () => $('#editTaskDialog').close());
     $('#openProblemForm').addEventListener('click', () => openProblemDialog());
     $('#openProblemFormFront')?.addEventListener('click', () => openProblemDialog());
     $('#problemForm').addEventListener('submit', addProblem);
@@ -559,22 +561,36 @@ window.copyCodeSnippet = function (btn, text) {
     // Past tasks are archived in pendingDays and visible on the calendar.
     const todayTasks = state.todos
       .filter(t => t.date === today)
-      .sort((a, b) => Number(a.done) - Number(b.done));
+      .sort((a, b) => {
+         if (a.done !== b.done) return Number(a.done) - Number(b.done);
+         const pVals = { 'high': 0, 'normal': 1, 'low': 2 };
+         return (pVals[a.priority || 'normal'] || 1) - (pVals[b.priority || 'normal'] || 1);
+      });
 
     if (!todayTasks.length) return el.append(emptyState("Fresh day, clean desk. Add today's tasks below."));
     todayTasks.forEach(t => {
       const row = document.createElement('div');
       row.className = `item-card task-row ${t.done ? 'done' : ''}`;
+      let pBadge = '';
+      if (t.priority === 'high') pBadge = '<span class="task-priority high">🔴 High</span>';
+      else if (t.priority === 'low') pBadge = '<span class="task-priority low">🟢 Low</span>';
       row.innerHTML = `
         <button class="check" data-toggle-task="${t.id}" title="Toggle task" aria-label="${t.done ? 'Mark task incomplete' : 'Mark task complete'}">${t.done ? '✓' : ''}</button>
         <div>
-          <h4>${escapeHTML(t.title)}</h4>
-          <div class="meta"><span>Today</span>${t.completedAt ? `<span>Completed ${formatShortDate(t.completedAt)}</span>` : ''}</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h4 style="margin:0">${escapeHTML(t.title)}</h4>
+            ${pBadge}
+          </div>
+          <div class="meta" style="margin-top:6px;"><span>Today</span>${t.completedAt ? `<span>Completed ${formatShortDate(t.completedAt)}</span>` : ''}</div>
         </div>
-        <button class="btn ghost small" data-delete-task="${t.id}" aria-label="Delete task">Delete</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+          <button class="btn ghost small" data-edit-task="${t.id}" aria-label="Edit task">Edit</button>
+          <button class="btn ghost small" data-delete-task="${t.id}" aria-label="Delete task">Delete</button>
+        </div>
       `;
       $('[data-toggle-task]', row).addEventListener('click', () => toggleTask(t.id));
       $('[data-delete-task]', row).addEventListener('click', () => deleteTask(t.id));
+      $('[data-edit-task]', row).addEventListener('click', () => openEditTaskDialog(t.id));
       el.append(row);
     });
   }
@@ -1217,10 +1233,12 @@ window.copyCodeSnippet = function (btn, text) {
     ev.preventDefault();
     const title = $('#todoInput').value.trim();
     if (!title) return;
+    const priority = $('#todoPriority')?.value || 'normal';
     const today = todayISO();
     // Always assign new tasks to today — no carrying over to other dates
-    state.todos.push({ id: uid('t'), title, date: today, done: false, createdAt: new Date().toISOString(), completedAt: '', pendingDays: [] });
+    state.todos.push({ id: uid('t'), title, priority, date: today, done: false, createdAt: new Date().toISOString(), completedAt: '', pendingDays: [] });
     $('#todoInput').value = '';
+    if ($('#todoPriority')) $('#todoPriority').value = 'normal';
     // Keep the date input locked to today
     $('#todoDate').value = today;
     saveState();
@@ -1263,6 +1281,39 @@ window.copyCodeSnippet = function (btn, text) {
     saveState();
     renderAll();
     toast('Task deleted. Any task reward was reverted.');
+  }
+
+  let editingTaskId = null;
+  function openEditTaskDialog(id) {
+    const t = state.todos.find(x => x.id === id);
+    if (!t) return;
+    editingTaskId = id;
+    $('#editTaskTitle').value = t.title;
+    $('#editTaskDate').value = t.date;
+    $('#editTaskPriority').value = t.priority || 'normal';
+    $('#editTaskDialog').showModal();
+    setTimeout(() => $('#editTaskTitle').focus(), 30);
+  }
+
+  function saveEditTask(ev) {
+    ev.preventDefault();
+    if (!editingTaskId) return;
+    const t = state.todos.find(x => x.id === editingTaskId);
+    if (!t) return;
+    
+    t.title = $('#editTaskTitle').value.trim();
+    if (!t.title) { toast('Task title is required.', 'warn'); return; }
+    
+    const newDate = $('#editTaskDate').value;
+    if (newDate && isValidISO(newDate)) {
+        t.date = newDate;
+    }
+    t.priority = $('#editTaskPriority').value || 'normal';
+    
+    saveState();
+    renderAll();
+    $('#editTaskDialog').close();
+    toast('Task updated.');
   }
 
   /* ============================================================

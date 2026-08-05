@@ -711,6 +711,10 @@ textarea { resize: vertical; min-height: 86px; }
 .task-row.done .check { background:var(--green); color:#fff; border-color:var(--green); }
 .task-row.done h4 { text-decoration:line-through; color:var(--ink-60); }
 .inline-form { display:grid; grid-template-columns:1fr 130px auto; gap:8px; margin-bottom:12px; }
+.todo-form-grid { grid-template-columns:1fr auto 130px auto; }
+.task-priority { font-family: ui-sans-serif, system-ui; font-size: .68rem; font-weight: 700; border-radius: 4px; padding: 2px 6px; background: rgba(0,0,0,0.05); border: 1px solid var(--border); }
+.task-priority.high { background: rgba(156,47,42,.1); color: var(--red); border-color: rgba(156,47,42,.22); }
+.task-priority.low { background: rgba(40,113,79,.12); color: var(--green); border-color: rgba(40,113,79,.28); }
 
 /* Focus timer */
 .focus-body { display:grid; gap:18px; }
