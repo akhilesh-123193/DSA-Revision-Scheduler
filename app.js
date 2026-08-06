@@ -3485,6 +3485,7 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
 
     $('#cdDaysNum').textContent = daysLeft;
     $('#wrProblemsTotal').textContent = totalProblems;
+    if ($('#wrProblemsRemaining')) $('#wrProblemsRemaining').textContent = remaining;
     $('#wrProblemsNeeded').textContent = daysLeft > 0 ? `${dailyNeeded}/day` : '—';
     $('#wrDaysActive').textContent = activeDays;
   }
