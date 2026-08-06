@@ -562,9 +562,9 @@ window.copyCodeSnippet = function (btn, text) {
     const todayTasks = state.todos
       .filter(t => t.date === today)
       .sort((a, b) => {
-         if (a.done !== b.done) return Number(a.done) - Number(b.done);
-         const pVals = { 'high': 0, 'normal': 1, 'low': 2 };
-         return (pVals[a.priority || 'normal'] || 1) - (pVals[b.priority || 'normal'] || 1);
+        if (a.done !== b.done) return Number(a.done) - Number(b.done);
+        const pVals = { 'high': 0, 'normal': 1, 'low': 2 };
+        return (pVals[a.priority || 'normal'] || 1) - (pVals[b.priority || 'normal'] || 1);
       });
 
     if (!todayTasks.length) {
@@ -580,13 +580,13 @@ window.copyCodeSnippet = function (btn, text) {
       upcomingContainer.id = 'upcomingTasksContainer';
       el.parentNode.insertBefore(upcomingContainer, el.nextSibling);
     }
-    
+
     const upcomingTasks = state.todos
       .filter(t => t.date > today)
       .sort((a, b) => {
-         if (a.date !== b.date) return a.date.localeCompare(b.date);
-         const pVals = { 'high': 0, 'normal': 1, 'low': 2 };
-         return (pVals[a.priority || 'normal'] || 1) - (pVals[b.priority || 'normal'] || 1);
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        const pVals = { 'high': 0, 'normal': 1, 'low': 2 };
+        return (pVals[a.priority || 'normal'] || 1) - (pVals[b.priority || 'normal'] || 1);
       });
 
     if (upcomingTasks.length > 0) {
@@ -610,9 +610,9 @@ window.copyCodeSnippet = function (btn, text) {
     let pBadge = '';
     if (t.priority === 'high') pBadge = '<span class="task-priority high">🔴 High</span>';
     else if (t.priority === 'low') pBadge = '<span class="task-priority low">🟢 Low</span>';
-    
+
     let dateLabel = t.date === todayISO() ? 'Today' : formatShortDate(t.date);
-    
+
     row.innerHTML = `
       <button class="check" data-toggle-task="${t.id}" title="Toggle task" aria-label="${t.done ? 'Mark task incomplete' : 'Mark task complete'}">${t.done ? '✓' : ''}</button>
       <div>
@@ -807,7 +807,7 @@ window.copyCodeSnippet = function (btn, text) {
       ['Tasks completed', m.tasks, tasksForDate(selectedDate).filter(t => t.done && t.completedAt === selectedDate).map(t => t.title)],
       ['Check-in', m.checkin, state.gamification.loginDays.includes(selectedDate) ? ['Daily flame recorded'] : []]
     ];
-    
+
     // Add planned tasks if selectedDate is in the future or today
     if (selectedDate >= todayISO()) {
       const plannedTasks = state.todos.filter(t => t.date === selectedDate && !t.done).map(t => t.title);
@@ -1346,16 +1346,16 @@ window.copyCodeSnippet = function (btn, text) {
     if (!editingTaskId) return;
     const t = state.todos.find(x => x.id === editingTaskId);
     if (!t) return;
-    
+
     t.title = $('#editTaskTitle').value.trim();
     if (!t.title) { toast('Task title is required.', 'warn'); return; }
-    
+
     const newDate = $('#editTaskDate').value;
     if (newDate && isValidISO(newDate)) {
-        t.date = newDate;
+      t.date = newDate;
     }
     t.priority = $('#editTaskPriority').value || 'normal';
-    
+
     saveState();
     renderAll();
     $('#editTaskDialog').close();
@@ -2443,11 +2443,11 @@ window.copyCodeSnippet = function (btn, text) {
       const nextDate = p.nextRevDate || todayISO();
       const isOverdue = nextDate < todayISO();
       const revCount = (p.history || []).length;
-      
+
       const roadmap = [];
       let simDate = nextDate;
       let simInterval = currentInterval;
-      
+
       roadmap.push({
         rung: simInterval,
         date: simDate,
@@ -2455,7 +2455,7 @@ window.copyCodeSnippet = function (btn, text) {
         isNext: true,
         desc: `This problem is currently on the ${simInterval}-day interval step. It is scheduled for revision on ${formatLongDate(simDate)} (${daysUntilText(simDate)}).`
       });
-      
+
       while (simInterval < 90 && roadmap.length < 5) {
         const nextInt = nextIntervalFor(simInterval, 'ac');
         if (nextInt <= simInterval) break;
@@ -2469,7 +2469,7 @@ window.copyCodeSnippet = function (btn, text) {
           desc: `If solved cleanly (AC), the next spaced interval increases to ${simInterval} days, scheduled for ${formatLongDate(simDate)}.`
         });
       }
-      
+
       let html = `
         <div class="schedule-tab-wrap">
           <div class="schedule-overview-card" style="background:rgba(255,252,242,0.9);border:1px solid var(--border);border-left:4px solid var(--gold);padding:20px;border-radius:14px;margin-bottom:24px;box-shadow:0 8px 24px rgba(28,21,16,0.06);">
@@ -2559,7 +2559,7 @@ window.copyCodeSnippet = function (btn, text) {
                 <div class="recall-item" style="background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
                   <button type="button" class="recall-reveal-btn" style="width:100%;text-align:left;padding:12px 16px;background:rgba(196,154,39,0.05);border:none;border-bottom:1px solid transparent;cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ink);transition:all 0.2s;" onclick="this.nextElementSibling.classList.toggle('hidden');this.style.borderBottomColor='var(--border)';this.style.background='#fff';">
                     <span style="font-size:1.2rem;">${f.icon}</span> 
-                    Reveal Hint ${i+1}: ${f.label}
+                    Reveal Hint ${i + 1}: ${f.label}
                   </button>
                   <div class="recall-content hidden" style="padding:16px;background:#fff;font-size:0.9rem;border-top:1px solid var(--border);">
                     <div class="notes-rich">${renderRichNotes(cfftd[f.key])}</div>
@@ -2679,10 +2679,10 @@ window.copyCodeSnippet = function (btn, text) {
             toast("Please type a real explanation (at least 15 characters).", "warn");
             return;
           }
-          
+
           fBtn.disabled = true;
           const apiKey = state.gamification.geminiKey;
-          
+
           if (apiKey) {
             fBtn.textContent = "🧠 AI Interviewer is grading your pitch...";
             try {
@@ -2706,12 +2706,12 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
                   contents: [{ parts: [{ text: prompt }] }]
                 })
               });
-              
+
               const data = await res.json();
               if (data.error) throw new Error(data.error.message);
-              
+
               const text = data.candidates[0].content.parts[0].text;
-              
+
               fFeedback.innerHTML = `<strong style="color:var(--ink);font-family:'Inter', sans-serif;">🤖 AI Interviewer Feedback:</strong><br/>${text.replace(/\n/g, '<br/>')}`;
               fFeedback.style.display = "block";
               toast("Graded by AI!", "success");
@@ -2724,13 +2724,13 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
               toast("AI Grading failed. See error.", "warn");
             }
           } else {
-             fFeedback.innerHTML = `<strong style="color:var(--red);">🚨 No API Key Found!</strong><br/>Please paste your key in the Reward Vault settings tab and hit Enter.`;
-             fFeedback.style.display = "block";
-             fFeedback.style.borderColor = "var(--red)";
-             fFeedback.style.background = "rgba(156,47,42,0.05)";
-             toast("Explanation locked manually (No key found).", "success");
+            fFeedback.innerHTML = `<strong style="color:var(--red);">🚨 No API Key Found!</strong><br/>Please paste your key in the Reward Vault settings tab and hit Enter.`;
+            fFeedback.style.display = "block";
+            fFeedback.style.borderColor = "var(--red)";
+            fFeedback.style.background = "rgba(156,47,42,0.05)";
+            toast("Explanation locked manually (No key found).", "success");
           }
-          
+
           $("#feynmanPanel").style.opacity = "0.8";
           fInput.disabled = true;
           fBtn.style.display = "none";
@@ -3681,21 +3681,21 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
     if (state && state.gamification && state.gamification.geminiKey) {
       geminiInput.value = state.gamification.geminiKey;
     }
-    
+
     geminiInput.addEventListener('input', (e) => {
       if (!state.gamification) state.gamification = {};
       state.gamification.geminiKey = e.target.value.trim();
       if (typeof saveState === 'function') saveState();
     });
-    
+
     geminiInput.addEventListener('blur', () => {
-       toast('Gemini API Key saved!', 'success');
+      toast('Gemini API Key saved!', 'success');
     });
-    
+
     geminiInput.addEventListener('keydown', (e) => {
-       if (e.key === 'Enter') {
-           geminiInput.blur();
-       }
+      if (e.key === 'Enter') {
+        geminiInput.blur();
+      }
     });
   }
 
