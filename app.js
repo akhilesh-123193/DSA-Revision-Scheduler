@@ -3467,8 +3467,12 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
     const appProblems = state.problems.filter(p => !p.archived).length;
     const totalProblems = appProblems + externalProgress;
     const remaining = Math.max(0, state.gamification.goalConfig.target - totalProblems);
-    // Use 1 decimal place instead of Math.ceil so the user can see fractional progress dynamically
-    const dailyNeeded = daysLeft > 0 ? (remaining / daysLeft).toFixed(1) : remaining;
+
+    // Calculate today's specific quota
+    const m = metricsForDate(today);
+    const startOfDayRemaining = remaining + m.solved;
+    const dailyQuota = daysLeft > 0 ? Math.ceil(startOfDayRemaining / daysLeft) : startOfDayRemaining;
+    const leftToday = Math.max(0, dailyQuota - m.solved);
 
     // Active days count
     const loginDays = new Set(state.gamification.loginDays || []);
@@ -3493,7 +3497,19 @@ FEEDBACK: [1-2 sentences of direct, actionable feedback. Point out if they misse
     $('#cdDaysNum').textContent = daysLeft;
     $('#wrProblemsTotal').textContent = totalProblems;
     if ($('#wrProblemsRemaining')) $('#wrProblemsRemaining').textContent = remaining;
-    $('#wrProblemsNeeded').textContent = daysLeft > 0 ? `${dailyNeeded}/day` : '—';
+    
+    if (daysLeft > 0) {
+      $('#wrProblemsNeeded').textContent = leftToday;
+      if ($('#wrProblemsNeeded').nextElementSibling) {
+        $('#wrProblemsNeeded').nextElementSibling.innerHTML = `more today <span style="opacity:0.7; font-size:0.85em;">(target: ${dailyQuota})</span>`;
+      }
+    } else {
+      $('#wrProblemsNeeded').textContent = remaining;
+      if ($('#wrProblemsNeeded').nextElementSibling) {
+        $('#wrProblemsNeeded').nextElementSibling.textContent = 'left to complete';
+      }
+    }
+    
     $('#wrDaysActive').textContent = activeDays;
   }
 
