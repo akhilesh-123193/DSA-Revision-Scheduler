@@ -139,6 +139,7 @@ window.copyCodeSnippet = function (btn, text) {
     });
     $('#topicFilter').addEventListener('change', renderProblems);
     $('#difficultyFilter').addEventListener('change', renderProblems);
+    $('#sortFilter').addEventListener('change', renderProblems);
     $('#prevMonth').addEventListener('click', () => { currentMonth = addMonthsISO(currentMonth, -1); renderCalendar(); playPageRustle(.5); });
     $('#nextMonth').addEventListener('click', () => { currentMonth = addMonthsISO(currentMonth, 1); renderCalendar(); playPageRustle(.5); });
     $('#resetBtn').addEventListener('click', () => confirmDialog({
@@ -652,11 +653,17 @@ window.copyCodeSnippet = function (btn, text) {
     const q = $('#problemSearch').value.trim().toLowerCase();
     const topic = $('#topicFilter').value;
     const diff = $('#difficultyFilter').value;
+    const sort = $('#sortFilter') ? $('#sortFilter').value : 'nextRevDate';
     let problems = state.problems.filter(p => !p.archived);
     if (q) problems = problems.filter(p => [p.name, p.topic, p.phase, p.difficulty, p.status].join(' ').toLowerCase().includes(q));
     if (topic) problems = problems.filter(p => p.topic === topic);
     if (diff) problems = problems.filter(p => p.difficulty === diff);
-    problems.sort((a, b) => (a.nextRevDate || '').localeCompare(b.nextRevDate || ''));
+    
+    if (sort === 'recentAdd') {
+      problems.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    } else {
+      problems.sort((a, b) => (a.nextRevDate || '').localeCompare(b.nextRevDate || ''));
+    }
 
     $('#problemCount').textContent = `${problems.length} problem${s(problems.length)}`;
 
